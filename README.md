@@ -4,19 +4,19 @@ MyTime 是一个个人时间管理系统，核心理念是：**感知时间的�
 
 它不是为了制造新的打卡压力，而是帮助用户在一段时间过去后，诚实记录自己真正做了什么。时间长短不是衡量努力的唯一标准，坚持不是打卡，而是每天靠近目标。
 
-## V1.1 主要能力
+## V2.0 主要能力
 
+- 时间空间：通过空间名称和密码进入独立的个人时间管理空间，一个空间可以管理多个项目
+- 多项目管理：每个项目可设置目标、起止日期、每日固定时间、难度和运行状态
+- AI 阶段计划：根据项目目标、周期、每日可用时间和难度，使用 DeepSeek 自动拆解 3～5 个阶段
+- 自动降级：未配置 DeepSeek API Key、接口失败或结果不合法时，自动使用内置规则引擎生成计划
+- 项目甘特图：查看阶段时间轴、状态和进度；支持手动编辑阶段或让 AI 重新生成
+- 自定义任务板块：支持临时任务和长期任务；长期任务必须设置目标
+- 周计划：为任务板块分配每日时间，分配总时长必须与项目每日固定时间一致
+- 时间记录：支持开始、暂停和结束，并记录这段时间真正完成的内容
+- 复盘系统：支持创建每日、每周和每月复盘，记录总结、洞察、下一步计划、投入时间与完成率
+- 数据统计：展示今天、本周、本月、累计时长、本周完成率和连续记录天数
 - PWA 支持：可添加到手机主屏幕或电脑桌面，以独立应用方式打开
-- 项目制管理：每个项目可设置名称、开始时间、截止时间、总目标、每天固定时间
-- 项目密码：系统不再使用全局访问密码，每个项目单独设置密码
-- 周计划：每个项目按周制定计划
-- 任务板块：支持考公、论文、秋招、科研项目、运动、阅读、学生工作、娱乐、外语、兴趣爱好
-- 自定义任务板块：用户可创建自己的任务板块
-- 任务类型：区分临时任务和长期任务；临时任务可选目标，长期任务必须设置目标
-- 每周任务数量限制：每周至少选择 1 个任务板块，最多选择 4 个任务板块
-- 时间记录：开始、暂停、结束，并记录这段时间真正做了什么
-- 最近记录：支持按任务板块筛选查看记录
-- 统计：今天、本周、本月、累计、本周完成率、连续记录天数
 
 ## 技术栈
 
@@ -51,41 +51,49 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SESSION_SECRET=your-long-random-session-secret
 DEVELOPER_ADMIN_PASSWORD=your-developer-admin-password
+DEEPSEEK_API_KEY=sk-xxxx-your-key-here
 ```
 
 说明：
 
 - `SUPABASE_URL`：Supabase Project URL，格式应为 `https://xxxx.supabase.co`
 - `SUPABASE_SERVICE_ROLE_KEY`：Supabase service role key，仅服务端使用，不能提交到 GitHub
-- `SESSION_SECRET`：用于项目密码哈希和登录 cookie 签名，建议使用 32 位以上随机字符串
+- `SESSION_SECRET`：用于空间密码哈希和登录 cookie 签名，建议使用 32 位以上随机字符串
 - `DEVELOPER_ADMIN_PASSWORD`：开发者管理密码，用于删除现有项目，只能配置在 Vercel 环境变量中，不要提交真实密码
+- `DEEPSEEK_API_KEY`：可选，用于调用 DeepSeek 生成定制化阶段计划；未配置时自动使用内置规则引擎
 
 ## Supabase 数据库
 
-如果是从 Summer Sprint V1.0 升级到 MyTime V1.1，请在 Supabase SQL Editor 执行：
+如果已经运行 MyTime V1.1，请先备份数据，然后在 Supabase SQL Editor 执行：
 
 ```text
-supabase/mytime_v1_1_migration.sql
+supabase/mytime_v2_0_migration.sql
 ```
 
-如果是全新项目，可以先执行旧的初始化脚本，再执行迁移脚本：
+如果是从 Summer Sprint V1.0 升级或全新部署，请按顺序执行：
 
 ```text
 supabase/schema.sql
 supabase/mytime_v1_1_migration.sql
+supabase/mytime_custom_boards_migration.sql
+supabase/mytime_v2_0_migration.sql
 ```
 
-迁移后会新增：
+V2.0 迁移会新增：
 
-- `projects`
-- `task_boards`
-- `weekly_plan_items`
+- `spaces`
+- `project_phases`
+- `reviews`
 
-并为旧表补充：
+并为 `projects` 补充：
 
-- `weekly_plans.project_id`
-- `study_sessions.project_id`
-- `study_sessions.task_board_id`
+- `space_id`
+- `goal`
+- `difficulty`
+- `plan_source`
+- `daily_start_time`
+- `daily_end_time`
+- `status`
 
 ## Vercel 部署
 
@@ -96,8 +104,9 @@ supabase/mytime_v1_1_migration.sql
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `SESSION_SECRET`
    - `DEVELOPER_ADMIN_PASSWORD`
-4. V1.1 不再需要 `ACCESS_PASSWORD`。
-5. 部署完成后，打开网站进入项目选择/创建页。
+   - `DEEPSEEK_API_KEY`（可选）
+4. V2.0 不需要 `ACCESS_PASSWORD`，登录密码由每个时间空间单独设置。
+5. 部署完成后，打开网站创建或进入时间空间。
 
 ## PWA 使用方式
 
@@ -129,3 +138,4 @@ https://summer-sprint.vercel.app/
 - 记录这段时间做了什么，而不是只记录时间长度
 - 警惕形式主义和假努力
 - 坚持不是打卡，而是每天靠近目标
+
