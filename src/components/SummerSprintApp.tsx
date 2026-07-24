@@ -322,15 +322,15 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
     <div className="rounded-[2.5rem] bg-[#fff7ea] p-5 shadow-soft sm:p-8">
       <header className="flex items-center justify-between gap-4">
         <div title={space.name}>
-          <p className="text-base font-black text-orange-700">MyTime</p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl">我的空间</h1>
+          <p className="text-sm font-black text-orange-700">MyTime</p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">我的空间</h1>
         </div>
-        <button onClick={onLogout} className="shrink-0 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-500 shadow-sm">退出空间</button>
+        <button onClick={onLogout} className="shrink-0 rounded-full bg-white px-4 py-2.5 text-xs font-black text-slate-500 shadow-sm">退出空间</button>
       </header>
 
-      <section className="mt-7 rounded-[2rem] bg-white p-5 shadow-sm">
+      <section className="mt-6 rounded-[2rem] bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-black text-slate-500">今天状态怎么样呀~</h2>
+          <h2 className="w-full text-lg font-black text-slate-500">今天状态怎么样呀~</h2>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -343,12 +343,17 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
                 <path d="M7.5 3.5v3M16.5 3.5v3M3.5 9.5h17M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01" strokeLinecap="round" />
               </svg>
             </button>
-            {todayMood ? <img src={getMoodByKey(todayMood.mood_key)?.src} alt={getMoodByKey(todayMood.mood_key)?.label || '今日状态'} className="h-14 w-14 rounded-2xl object-cover" /> : null}
+            {todayMood ? (
+              <div className="flex items-center gap-2 rounded-2xl bg-cream/70 py-1.5 pl-1.5 pr-3">
+                <img src={getMoodByKey(todayMood.mood_key)?.src} alt={getMoodByKey(todayMood.mood_key)?.label || '今日状态'} className="h-12 w-12 rounded-xl object-cover" />
+                <span className="whitespace-nowrap text-sm font-black text-slate-600">{getMoodByKey(todayMood.mood_key)?.label}</span>
+              </div>
+            ) : null}
           </div>
         </div>
-        <div className="mt-5 rounded-[1.6rem] border border-orange-100 bg-gradient-to-br from-amber-50 via-rose-50 to-sky-50 p-3">
-          <div className="flex items-center gap-2.5">
-            <div className="grid flex-1 grid-cols-4 gap-2.5">
+        <div className="mt-4 rounded-[1.6rem] border border-orange-100 bg-gradient-to-br from-amber-50 via-rose-50 to-sky-50 p-3">
+          <div className="flex items-center gap-2">
+            <div className="grid flex-1 grid-cols-4 gap-2">
               {visibleMoods.map((mood) => {
                 const selected = todayMood?.mood_key === mood.key;
                 return (
@@ -357,10 +362,10 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
                     type="button"
                     onClick={() => saveMood(mood.key)}
                     disabled={Boolean(moodSaving) || turningMoodHandle}
-                    className={`rounded-2xl p-1.5 transition disabled:opacity-50 ${selected ? 'bg-honey ring-2 ring-orange-300' : 'bg-cream/70 ring-1 ring-orange-100 hover:-translate-y-0.5'}`}
+                    className={`overflow-hidden rounded-2xl p-0.5 transition disabled:opacity-50 ${selected ? 'bg-honey ring-2 ring-orange-300' : 'bg-cream/70 ring-1 ring-orange-100 hover:-translate-y-0.5'}`}
                     aria-label={mood.label}
                   >
-                    <img src={mood.src} alt="" className="aspect-square w-full rounded-xl object-cover" />
+                    <img src={mood.src} alt="" className="aspect-square w-full scale-125 rounded-xl object-cover" />
                   </button>
                 );
               })}
@@ -369,7 +374,7 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
               type="button"
               onClick={turnMoodHandle}
               disabled={turningMoodHandle || Boolean(moodSaving)}
-              className="relative flex h-16 w-9 shrink-0 items-center justify-center rounded-full bg-[#ffe0d3] shadow-inner transition active:scale-95 disabled:opacity-60"
+              className="relative flex h-14 w-8 shrink-0 items-center justify-center rounded-full bg-[#ffe0d3] shadow-inner transition active:scale-95 disabled:opacity-60"
               aria-label="转动扭蛋机把手，换一批表情"
             >
               <span className={`absolute bottom-3 h-9 w-1.5 origin-bottom rounded-full bg-orange-300 transition-transform duration-300 ${turningMoodHandle ? 'rotate-[-38deg]' : 'rotate-[28deg]'}`}>
@@ -390,7 +395,7 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
         </div>
       ) : null}
 
-      <button onClick={() => setShowCreate(!showCreate)} className="mt-7 w-full rounded-[1.8rem] bg-ink px-6 py-5 text-lg font-black text-white shadow-lg transition active:scale-[0.99]">{showCreate ? '取消创建' : '＋ 创建新项目'}</button>
+      <button onClick={() => setShowCreate(!showCreate)} className="mt-6 w-full rounded-[1.6rem] bg-ink px-6 py-4 text-base font-black text-white shadow-lg transition active:scale-[0.99]">{showCreate ? '取消创建' : '＋ 创建新项目'}</button>
 
       {showCreate ? (
         <section className="mt-5 rounded-[2rem] bg-white/90 p-6 shadow-soft">
@@ -531,8 +536,8 @@ function SwipeProjectCard({ project, deleting, onOpen, onDelete }: {
         className="relative z-10 flex w-full items-center justify-between gap-4 rounded-[2rem] bg-white p-6 text-left shadow-sm transition-transform duration-200"
       >
         <div className="min-w-0">
-          <p className="truncate text-2xl font-black">{project.name}</p>
-          <p className="mt-2 text-sm font-bold text-slate-500">{project.start_date} → {project.end_date}</p>
+          <p className="truncate text-xl font-black">{project.name}</p>
+          <p className="mt-1.5 text-xs font-bold text-slate-500">{project.start_date} → {project.end_date}</p>
         </div>
         <span className={`shrink-0 rounded-full px-4 py-2 text-sm font-black ${statusClass}`}>{statusText}</span>
       </button>
