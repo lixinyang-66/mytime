@@ -12,6 +12,15 @@ export type Space = {
   created_at?: string;
 };
 
+export type SpaceMood = {
+  id: number;
+  space_id: number;
+  mood_date: string;
+  mood_key: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
 // === V2.0: Project (enhanced) ===
 export type Project = {
   id: number;
@@ -126,6 +135,7 @@ export type Stats = {
 export type SpaceBootstrap = {
   space: Space;
   projects: ProjectSummary[];
+  moods: SpaceMood[];
 };
 
 // === V2.0: Project-level bootstrap ===

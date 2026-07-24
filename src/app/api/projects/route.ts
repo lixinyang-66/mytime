@@ -112,3 +112,39 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: message }, { status: 500 });
   }
 }
+
+// DELETE: 删除当前空间下的项目；数据库会级联清理项目关联的计划、记录、阶段和复盘。
+export async function DELETE(request: NextRequest) {
+  const auth = requireSpaceAuthResponse();
+  if (auth instanceof Response) return auth;
+
+  const body = await request.json().catch(() => ({}));
+  const projectId = Number(body.projectId || 0);
+
+  if (!Number.isInteger(projectId) || projectId <= 0) {
+    return Response.json({ error: '请选择要删除的项目。' }, { status: 400 });
+  }
+
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .select('id,name')
+      .eq('id', projectId)
+      .eq('space_id', auth.spaceId)
+      .maybeSingle();
+
+    if (projectError) throw projectError;
+    if (!project) {
+      return Response.json({ error: '项目不存在或不属于当前空间。' }, { status: 404 });
+    }
+
+    const { error: deleteError } = await supabase.from('projects').delete().eq('id', projectId);
+    if (deleteError) throw deleteError;
+
+    return Response.json({ ok: true, deletedProject: project });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '删除项目失败。';
+    return Response.json({ error: message }, { status: 500 });
+  }
+}

@@ -1,8 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Space, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty } from '@/types';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type TouchEvent } from 'react';
+import type { Space, SpaceMood, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty } from '@/types';
 import { formatChineseDate, getWeekEnd, getWeekStart, minutesToText, timeToToday, toDateKey, weekdayText } from '@/lib/date';
+import { getMoodByKey, MOODS } from '@/lib/moods';
 
 const boardColors = [
   'bg-orange-100 text-orange-800 ring-orange-200',
@@ -24,7 +26,7 @@ type ProjectMode = 'home' | 'gantt' | 'focus' | 'finish' | 'plan' | 'stats' | 'b
 
 type RunningSession = { taskBoardId: number; startAt: string; pausedMs: number };
 
-type SpaceData = { space: Space; projects: ProjectSummary[] };
+type SpaceData = { space: Space; projects: ProjectSummary[]; moods: SpaceMood[] };
 
 type ProjectData = {
   project: Project;
@@ -161,7 +163,7 @@ export default function MyTimeApp() {
     await refreshProject();
   }
 
-  if (loading) return <Shell><LoadingCard /></Shell>;
+  if (loading) return <LoadingCard />;
   if (error) return <Shell><ErrorCard message={error} onRetry={() => view === 'project' ? refreshProject() : loadSpace()} /></Shell>;
 
   if (view === 'space' && spaceData) {
@@ -170,6 +172,7 @@ export default function MyTimeApp() {
         <SpaceView
           space={spaceData.space}
           projects={spaceData.projects}
+          moods={spaceData.moods}
           onOpenProject={(id) => loadProject(id)}
           onRefresh={loadSpace}
           onLogout={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }}
@@ -220,7 +223,33 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 function LoadingCard() {
-  return <div className="mt-20 rounded-[2rem] bg-white/80 p-8 text-center shadow-soft">正在唤醒 MyTime...</div>;
+  const fallingMoods = Array.from({ length: 42 }, (_, index) => {
+    const mood = MOODS[index % MOODS.length];
+    const style = {
+      left: `${(index * 37) % 102 - 2}%`,
+      width: `${46 + (index % 4) * 12}px`,
+      animationDelay: `-${(index % 10) * 0.73}s`,
+      animationDuration: `${5.8 + (index % 6) * 0.7}s`,
+      '--mood-drift': `${((index * 29) % 140) - 70}px`,
+      '--mood-rotation': `${((index * 41) % 70) - 35}deg`,
+    } as CSSProperties & Record<'--mood-drift' | '--mood-rotation', string>;
+    return { mood, index, style };
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[#fff8ec]" aria-label="页面加载中" role="status">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,224,138,0.72),transparent_34rem),radial-gradient(circle_at_bottom_right,rgba(158,216,255,0.58),transparent_32rem)]" />
+      {fallingMoods.map(({ mood, index, style }) => (
+        <img
+          key={`${mood.key}-${index}`}
+          src={mood.src}
+          alt=""
+          className="mood-rain-item pointer-events-none absolute top-[-6rem] rounded-full object-cover shadow-xl"
+          style={style}
+        />
+      ))}
+    </div>
+  );
 }
 
 function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -234,8 +263,8 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void 
 }
 
 // === SPACE VIEW ===
-function SpaceView({ space, projects, onOpenProject, onRefresh, onLogout }: {
-  space: Space; projects: ProjectSummary[]; onOpenProject: (id: number) => void; onRefresh: () => void; onLogout: () => void;
+function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout }: {
+  space: Space; projects: ProjectSummary[]; moods: SpaceMood[]; onOpenProject: (id: number) => void; onRefresh: () => void; onLogout: () => void;
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
@@ -248,6 +277,14 @@ function SpaceView({ space, projects, onOpenProject, onRefresh, onLogout }: {
   const [useAI, setUseAI] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [moodRecords, setMoodRecords] = useState(moods);
+  const [moodSaving, setMoodSaving] = useState('');
+  const [moodError, setMoodError] = useState('');
+  const [deletingProjectId, setDeletingProjectId] = useState<number | null>(null);
+  const todayKey = toDateKey(new Date());
+  const todayMood = moodRecords.find((mood) => mood.mood_date === todayKey);
+
+  useEffect(() => setMoodRecords(moods), [moods]);
 
   async function createProject(e: React.FormEvent) {
     e.preventDefault();
@@ -262,54 +299,85 @@ function SpaceView({ space, projects, onOpenProject, onRefresh, onLogout }: {
     setSaving(false);
     if (!response.ok) { setError(payload.error || '创建项目失败。'); return; }
     setShowCreate(false);
+    setName(''); setGoal(''); setEndDate('');
+    await onRefresh();
+  }
+
+  async function saveMood(moodKey: string) {
+    setMoodSaving(moodKey);
+    setMoodError('');
+    const response = await fetch('/api/space-moods', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ moodKey, moodDate: todayKey }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    setMoodSaving('');
+    if (!response.ok) { setMoodError(payload.error || '保存今天的状态失败。'); return; }
+    setMoodRecords((current) => [...current.filter((mood) => mood.mood_date !== todayKey), payload]);
+  }
+
+  async function deleteProject(project: ProjectSummary) {
+    const confirmed = window.confirm(`确定删除项目“${project.name}”吗？项目下的计划、记录、阶段和复盘也会被永久删除。`);
+    if (!confirmed) return;
+
+    setDeletingProjectId(project.id);
+    const response = await fetch('/api/projects', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: project.id }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    setDeletingProjectId(null);
+    if (!response.ok) { setError(payload.error || '删除项目失败。'); return; }
     await onRefresh();
   }
 
   return (
-    <div className="space-y-5">
-      <header className="flex items-center justify-between pt-2">
-        <div>
-          <p className="text-sm font-bold text-orange-700">MyTime</p>
-          <h1 className="text-3xl font-black tracking-tight">{space.name}</h1>
-          <p className="mt-1 text-sm font-bold text-slate-500">你的个人时间管理空间</p>
+    <div className="rounded-[2.5rem] bg-[#fff7ea] p-5 shadow-soft sm:p-8">
+      <header className="flex items-center justify-between gap-4">
+        <div title={space.name}>
+          <p className="text-base font-black text-orange-700">MyTime</p>
+          <h1 className="mt-1 text-4xl font-black tracking-tight sm:text-5xl">我的空间</h1>
         </div>
-        <button onClick={onLogout} className="rounded-full bg-white/70 px-4 py-2 text-xs font-bold text-slate-500 shadow-sm">退出空间</button>
+        <button onClick={onLogout} className="shrink-0 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-500 shadow-sm">退出空间</button>
       </header>
 
-      <section className="rounded-[2rem] bg-gradient-to-br from-honey/40 to-cream p-6 shadow-soft">
-        <h2 className="text-xl font-black">你的项目</h2>
-        <p className="mt-1 text-sm font-bold text-slate-500">每个项目代表一个长期目标，由 AI 帮你拆解阶段计划</p>
+      <section className="mt-7 rounded-[2rem] bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-black text-slate-500">今天状态怎么样呀~</h2>
+            {todayMood ? <p className="mt-2 text-sm font-bold text-orange-700">今天选择了：{getMoodByKey(todayMood.mood_key)?.label || '一个表情'}</p> : <p className="mt-2 text-sm font-bold text-slate-400">选一个表情，贴到今天的日历上。</p>}
+          </div>
+          {todayMood ? <img src={getMoodByKey(todayMood.mood_key)?.src} alt={getMoodByKey(todayMood.mood_key)?.label || '今日状态'} className="h-16 w-16 rounded-2xl object-cover" /> : null}
+        </div>
+        <div className="mt-5 grid grid-cols-4 gap-3 sm:grid-cols-8">
+          {MOODS.map((mood) => {
+            const selected = todayMood?.mood_key === mood.key;
+            return (
+              <button
+                key={mood.key}
+                type="button"
+                onClick={() => saveMood(mood.key)}
+                disabled={Boolean(moodSaving)}
+                className={`rounded-2xl p-1.5 text-center transition disabled:opacity-50 ${selected ? 'bg-honey ring-2 ring-orange-300' : 'bg-cream/70 ring-1 ring-orange-100 hover:-translate-y-0.5'}`}
+                title={mood.label}
+              >
+                <img src={mood.src} alt={mood.label} className="mx-auto h-12 w-12 rounded-xl object-cover" />
+                <span className="mt-1 block truncate text-[10px] font-black text-slate-600">{moodSaving === mood.key ? '保存中' : mood.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        {moodError ? <p className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{moodError}</p> : null}
       </section>
 
-      {projects.length === 0 ? (
-        <div className="rounded-[2rem] bg-white/80 p-8 text-center shadow-soft">
-          <p className="text-lg font-black text-slate-600">还没有项目</p>
-          <p className="mt-2 text-sm font-bold text-slate-500">点击下方按钮创建你的第一个项目</p>
-        </div>
-      ) : (
-        <div className="grid gap-3">
-          {projects.map((project) => (
-            <button key={project.id} onClick={() => onOpenProject(project.id)} className="rounded-[1.6rem] bg-white/90 p-5 text-left shadow-soft ring-1 ring-white transition active:scale-[0.99]">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-lg font-black">{project.name}</p>
-                  <p className="mt-1 text-sm font-bold text-slate-500">{project.start_date} → {project.end_date}</p>
-                </div>
-                <div className={`rounded-full px-3 py-1 text-xs font-black ${project.status === 'active' ? 'bg-emerald-100 text-emerald-800' : project.status === 'paused' ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
-                  {project.status === 'active' ? '进行中' : project.status === 'paused' ? '暂停' : '已完成'}
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+      <MoodCalendar moods={moodRecords} />
 
-      <div className="flex justify-center gap-3">
-        <button onClick={() => setShowCreate(!showCreate)} className="rounded-full bg-ink px-6 py-3 text-sm font-black text-white shadow-lg">{showCreate ? '取消创建' : '创建新项目'}</button>
-      </div>
+      <button onClick={() => setShowCreate(!showCreate)} className="mt-7 w-full rounded-[1.8rem] bg-ink px-6 py-5 text-lg font-black text-white shadow-lg transition active:scale-[0.99]">{showCreate ? '取消创建' : '＋ 创建新项目'}</button>
 
       {showCreate ? (
-        <section className="rounded-[2rem] bg-white/90 p-6 shadow-soft">
+        <section className="mt-5 rounded-[2rem] bg-white/90 p-6 shadow-soft">
           <h2 className="text-xl font-black">创建项目</h2>
           <p className="mt-1 text-sm font-bold text-slate-500">填写基本信息，AI 将根据你的项目自动生成阶段计划</p>
           {error ? <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{error}</p> : null}
@@ -343,6 +411,125 @@ function SpaceView({ space, projects, onOpenProject, onRefresh, onLogout }: {
           </form>
         </section>
       ) : null}
+
+      <section className="mt-7 space-y-4">
+        {error ? <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{error}</p> : null}
+        {projects.length === 0 ? (
+          <div className="rounded-[2rem] bg-white p-8 text-center shadow-sm">
+            <p className="text-lg font-black text-slate-600">还没有项目</p>
+            <p className="mt-2 text-sm font-bold text-slate-500">点击上方按钮创建你的第一个项目</p>
+          </div>
+        ) : projects.map((project) => (
+          <SwipeProjectCard
+            key={project.id}
+            project={project}
+            deleting={deletingProjectId === project.id}
+            onOpen={() => onOpenProject(project.id)}
+            onDelete={() => deleteProject(project)}
+          />
+        ))}
+      </section>
+    </div>
+  );
+}
+
+function MoodCalendar({ moods }: { moods: SpaceMood[] }) {
+  const now = new Date();
+  const [month, setMonth] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
+  const moodByDate = useMemo(() => new Map(moods.map((mood) => [mood.mood_date, mood])), [moods]);
+  const year = month.getFullYear();
+  const monthIndex = month.getMonth();
+  const firstWeekday = (new Date(year, monthIndex, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const cellCount = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+  const todayKey = toDateKey(now);
+
+  function changeMonth(offset: number) {
+    setMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
+  }
+
+  return (
+    <section className="mt-5 rounded-[2rem] bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-slate-400">状态日历</p>
+          <h2 className="text-xl font-black">{year} 年 {monthIndex + 1} 月</h2>
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => changeMonth(-1)} className="h-10 w-10 rounded-full bg-cream font-black text-slate-600">‹</button>
+          <button type="button" onClick={() => changeMonth(1)} className="h-10 w-10 rounded-full bg-cream font-black text-slate-600">›</button>
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-7 gap-1 text-center text-xs font-black text-slate-400">
+        {['一', '二', '三', '四', '五', '六', '日'].map((day) => <span key={day} className="py-1">{day}</span>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {Array.from({ length: cellCount }, (_, index) => {
+          const day = index - firstWeekday + 1;
+          if (day < 1 || day > daysInMonth) return <div key={`empty-${index}`} className="min-h-14" aria-hidden="true" />;
+          const dateKey = toDateKey(new Date(year, monthIndex, day));
+          const mood = moodByDate.get(dateKey);
+          const moodInfo = getMoodByKey(mood?.mood_key);
+          const isToday = dateKey === todayKey;
+          return (
+            <div key={dateKey} className={`relative flex min-h-14 flex-col items-center justify-center rounded-2xl ${isToday ? 'bg-honey/70 ring-2 ring-orange-200' : 'bg-cream/60'}`} title={moodInfo?.label}>
+              <span className={`text-xs font-black ${isToday ? 'text-orange-800' : 'text-slate-500'}`}>{day}</span>
+              {moodInfo ? <img src={moodInfo.src} alt={moodInfo.label} className="mt-1 h-7 w-7 rounded-full object-cover" /> : null}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function SwipeProjectCard({ project, deleting, onOpen, onDelete }: {
+  project: ProjectSummary; deleting: boolean; onOpen: () => void; onDelete: () => void;
+}) {
+  const [offset, setOffset] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const suppressClick = useRef(false);
+  const statusClass = project.status === 'active' ? 'bg-emerald-100 text-emerald-800' : project.status === 'paused' ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600';
+  const statusText = project.status === 'active' ? '进行中' : project.status === 'paused' ? '暂停' : '已完成';
+
+  function finishSwipe() {
+    const shouldOpen = offset < -56;
+    suppressClick.current = true;
+    setOffset(shouldOpen ? -108 : 0);
+    window.setTimeout(() => { suppressClick.current = false; }, 0);
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-[2rem] bg-red-500">
+      <button type="button" onClick={onDelete} disabled={deleting} className="absolute inset-y-0 right-0 flex w-28 items-center justify-center bg-red-500 text-sm font-black text-white disabled:opacity-60">
+        {deleting ? '删除中...' : '删除'}
+      </button>
+      <button
+        type="button"
+        onTouchStart={(event: TouchEvent<HTMLButtonElement>) => { touchStartX.current = event.touches[0]?.clientX ?? null; }}
+        onTouchMove={(event: TouchEvent<HTMLButtonElement>) => {
+          if (touchStartX.current === null) return;
+          const currentX = event.touches[0]?.clientX;
+          if (currentX === undefined) return;
+          const nextOffset = Math.min(0, Math.max(-108, currentX - touchStartX.current));
+          setOffset(nextOffset);
+        }}
+        onTouchEnd={finishSwipe}
+        onTouchCancel={() => setOffset(0)}
+        onClick={() => {
+          if (suppressClick.current || offset < 0) { setOffset(0); return; }
+          onOpen();
+        }}
+        style={{ transform: `translateX(${offset}px)`, touchAction: 'pan-y' }}
+        className="relative z-10 flex w-full items-center justify-between gap-4 rounded-[2rem] bg-white p-6 text-left shadow-sm transition-transform duration-200"
+      >
+        <div className="min-w-0">
+          <p className="truncate text-2xl font-black">{project.name}</p>
+          <p className="mt-2 text-sm font-bold text-slate-500">{project.start_date} → {project.end_date}</p>
+          <p className="mt-3 text-xs font-bold text-slate-400">向左滑动可删除</p>
+        </div>
+        <span className={`shrink-0 rounded-full px-4 py-2 text-sm font-black ${statusClass}`}>{statusText}</span>
+      </button>
     </div>
   );
 }

@@ -46,3 +46,27 @@ select {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.mood-rain-item {
+  animation-name: mood-rain-fall;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
+@keyframes mood-rain-fall {
+  from {
+    transform: translate3d(0, -8vh, 0) rotate(0deg);
+  }
+
+  to {
+    transform: translate3d(var(--mood-drift), 116vh, 0) rotate(var(--mood-rotation));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mood-rain-item {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1;
+  }
+}

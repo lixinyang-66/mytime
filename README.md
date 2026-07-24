@@ -78,6 +78,7 @@ supabase/schema.sql
 supabase/mytime_v1_1_migration.sql
 supabase/mytime_custom_boards_migration.sql
 supabase/mytime_v2_0_migration.sql
+supabase/mytime_space_moods_migration.sql
 ```
 
 V2.0 迁移会新增：
@@ -95,6 +96,12 @@ V2.0 迁移会新增：
 - `daily_start_time`
 - `daily_end_time`
 - `status`
+
+表情状态与日历功能还需要额外执行：
+
+```text
+supabase/mytime_space_moods_migration.sql
+```
 
 ## Vercel 部署
 
