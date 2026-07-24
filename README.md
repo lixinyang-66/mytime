@@ -7,6 +7,7 @@ MyTime 是一个个人时间管理系统，核心理念是：**感知时间的�
 ## V2.0 主要能力
 
 - 时间空间：通过空间名称和密码进入独立的个人时间管理空间，一个空间可以管理多个项目
+- 空间管理：开发者输入服务端管理密码后，可以删除任意空间及其全部关联数据
 - 多项目管理：每个项目可设置目标、起止日期、每日固定时间、难度和运行状态
 - AI 阶段计划：根据项目目标、周期、每日可用时间和难度，使用 DeepSeek 自动拆解 3～5 个阶段
 - 自动降级：未配置 DeepSeek API Key、接口失败或结果不合法时，自动使用内置规则引擎生成计划
@@ -59,7 +60,7 @@ DEEPSEEK_API_KEY=sk-xxxx-your-key-here
 - `SUPABASE_URL`：Supabase Project URL，格式应为 `https://xxxx.supabase.co`
 - `SUPABASE_SERVICE_ROLE_KEY`：Supabase service role key，仅服务端使用，不能提交到 GitHub
 - `SESSION_SECRET`：用于空间密码哈希和登录 cookie 签名，建议使用 32 位以上随机字符串
-- `DEVELOPER_ADMIN_PASSWORD`：开发者管理密码，用于删除现有项目，只能配置在 Vercel 环境变量中，不要提交真实密码
+- `DEVELOPER_ADMIN_PASSWORD`：开发者管理密码，用于删除现有项目或空间，只能配置在 Vercel 环境变量中，不要提交真实密码
 - `DEEPSEEK_API_KEY`：可选，用于调用 DeepSeek 生成定制化阶段计划；未配置时自动使用内置规则引擎
 
 ## Supabase 数据库
