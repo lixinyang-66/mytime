@@ -253,6 +253,7 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
   const [moodError, setMoodError] = useState('');
   const [moodPage, setMoodPage] = useState(0);
   const [turningMoodHandle, setTurningMoodHandle] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [deletingProjectId, setDeletingProjectId] = useState<number | null>(null);
   const todayKey = toDateKey(new Date());
   const todayMood = moodRecords.find((mood) => mood.mood_date === todayKey);
@@ -322,65 +323,72 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
       <header className="flex items-center justify-between gap-4">
         <div title={space.name}>
           <p className="text-base font-black text-orange-700">MyTime</p>
-          <h1 className="mt-1 text-4xl font-black tracking-tight sm:text-5xl">我的空间</h1>
+          <h1 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl">我的空间</h1>
         </div>
         <button onClick={onLogout} className="shrink-0 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-500 shadow-sm">退出空间</button>
       </header>
 
       <section className="mt-7 rounded-[2rem] bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-black text-slate-500">今天状态怎么样呀~</h2>
-            {todayMood ? <p className="mt-2 text-sm font-bold text-orange-700">今天选择了：{getMoodByKey(todayMood.mood_key)?.label || '一个表情'}</p> : <p className="mt-2 text-sm font-bold text-slate-400">选一个表情，贴到今天的日历上。</p>}
+          <h2 className="text-xl font-black text-slate-500">今天状态怎么样呀~</h2>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCalendarOpen(true)}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cream text-slate-500 transition hover:-translate-y-0.5"
+              aria-label="打开状态日历"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+                <path d="M7.5 3.5v3M16.5 3.5v3M3.5 9.5h17M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01" strokeLinecap="round" />
+              </svg>
+            </button>
+            {todayMood ? <img src={getMoodByKey(todayMood.mood_key)?.src} alt={getMoodByKey(todayMood.mood_key)?.label || '今日状态'} className="h-14 w-14 rounded-2xl object-cover" /> : null}
           </div>
-          {todayMood ? <img src={getMoodByKey(todayMood.mood_key)?.src} alt={getMoodByKey(todayMood.mood_key)?.label || '今日状态'} className="h-16 w-16 rounded-2xl object-cover" /> : null}
         </div>
         <div className="mt-5 rounded-[1.6rem] border border-orange-100 bg-gradient-to-br from-amber-50 via-rose-50 to-sky-50 p-3">
-          <div className="grid grid-cols-4 gap-2.5">
-          {visibleMoods.map((mood) => {
-            const selected = todayMood?.mood_key === mood.key;
-            return (
-              <button
-                key={mood.key}
-                type="button"
-                onClick={() => saveMood(mood.key)}
-                disabled={Boolean(moodSaving) || turningMoodHandle}
-                className={`rounded-2xl p-1.5 text-center transition disabled:opacity-50 ${selected ? 'bg-honey ring-2 ring-orange-300' : 'bg-cream/70 ring-1 ring-orange-100 hover:-translate-y-0.5'}`}
-                title={mood.label}
-              >
-                <img src={mood.src} alt={mood.label} className="mx-auto h-12 w-12 rounded-xl object-cover" />
-                <span className="mt-1 block truncate text-[10px] font-black text-slate-600">{moodSaving === mood.key ? '保存中' : mood.label}</span>
-              </button>
-            );
-          })}
-          </div>
-          <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-white/75 px-3 py-2.5 shadow-sm">
-            <div className="min-w-0">
-              <p className="text-xs font-black text-slate-600">扭蛋机 · 第 {moodPage + 1} / {moodPages} 批</p>
-              <div className="mt-1 flex gap-1.5" aria-label={`第 ${moodPage + 1} 批，共 ${moodPages} 批`}>
-                {Array.from({ length: moodPages }, (_, index) => (
-                  <span key={index} className={`h-1.5 w-1.5 rounded-full ${index === moodPage ? 'bg-orange-400' : 'bg-orange-100'}`} />
-                ))}
-              </div>
+          <div className="flex items-center gap-2.5">
+            <div className="grid flex-1 grid-cols-4 gap-2.5">
+              {visibleMoods.map((mood) => {
+                const selected = todayMood?.mood_key === mood.key;
+                return (
+                  <button
+                    key={mood.key}
+                    type="button"
+                    onClick={() => saveMood(mood.key)}
+                    disabled={Boolean(moodSaving) || turningMoodHandle}
+                    className={`rounded-2xl p-1.5 transition disabled:opacity-50 ${selected ? 'bg-honey ring-2 ring-orange-300' : 'bg-cream/70 ring-1 ring-orange-100 hover:-translate-y-0.5'}`}
+                    aria-label={mood.label}
+                  >
+                    <img src={mood.src} alt="" className="aspect-square w-full rounded-xl object-cover" />
+                  </button>
+                );
+              })}
             </div>
             <button
               type="button"
               onClick={turnMoodHandle}
               disabled={turningMoodHandle || Boolean(moodSaving)}
-              className="flex shrink-0 items-center gap-2 rounded-xl bg-ink px-3 py-2 text-xs font-black text-white transition active:scale-95 disabled:opacity-60"
+              className="relative flex h-16 w-9 shrink-0 items-center justify-center rounded-full bg-[#ffe0d3] shadow-inner transition active:scale-95 disabled:opacity-60"
               aria-label="转动扭蛋机把手，换一批表情"
             >
-              <span className={`inline-flex h-5 w-2 origin-bottom items-start justify-center rounded-full bg-orange-300 transition-transform duration-300 ${turningMoodHandle ? 'rotate-[-38deg]' : 'rotate-[28deg]'}`}>
-                <span className="-mt-1 h-3 w-3 rounded-full bg-coral ring-2 ring-white" />
+              <span className={`absolute bottom-3 h-9 w-1.5 origin-bottom rounded-full bg-orange-300 transition-transform duration-300 ${turningMoodHandle ? 'rotate-[-38deg]' : 'rotate-[28deg]'}`}>
+                <span className="absolute -left-1.5 -top-2 h-4 w-4 rounded-full bg-coral ring-2 ring-white" />
               </span>
-              换一批
             </button>
           </div>
         </div>
         {moodError ? <p className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{moodError}</p> : null}
       </section>
 
-      <MoodCalendar moods={moodRecords} />
+      {calendarOpen ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/20 p-5 backdrop-blur-[2px]" onClick={() => setCalendarOpen(false)}>
+          <div className="relative w-full max-w-md" role="dialog" aria-modal="true" aria-label="状态日历" onClick={(event) => event.stopPropagation()}>
+            <button type="button" onClick={() => setCalendarOpen(false)} className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-cream text-xl font-bold text-slate-500" aria-label="关闭日历">×</button>
+            <MoodCalendar moods={moodRecords} />
+          </div>
+        </div>
+      ) : null}
 
       <button onClick={() => setShowCreate(!showCreate)} className="mt-7 w-full rounded-[1.8rem] bg-ink px-6 py-5 text-lg font-black text-white shadow-lg transition active:scale-[0.99]">{showCreate ? '取消创建' : '＋ 创建新项目'}</button>
 
@@ -420,14 +428,8 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
         </section>
       ) : null}
 
-      <section className="mt-7 space-y-4">
-        {error ? <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{error}</p> : null}
-        {projects.length === 0 ? (
-          <div className="rounded-[2rem] bg-white p-8 text-center shadow-sm">
-            <p className="text-lg font-black text-slate-600">还没有项目</p>
-            <p className="mt-2 text-sm font-bold text-slate-500">点击上方按钮创建你的第一个项目</p>
-          </div>
-        ) : projects.map((project) => (
+      {projects.length > 0 ? <section className="mt-7 space-y-4">
+        {projects.map((project) => (
           <SwipeProjectCard
             key={project.id}
             project={project}
@@ -436,7 +438,7 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
             onDelete={() => deleteProject(project)}
           />
         ))}
-      </section>
+      </section> : null}
     </div>
   );
 }
@@ -457,12 +459,9 @@ function MoodCalendar({ moods }: { moods: SpaceMood[] }) {
   }
 
   return (
-    <section className="mt-5 rounded-[2rem] bg-white p-5 shadow-sm">
+    <section className="rounded-[2rem] bg-white p-5 shadow-soft">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-bold text-slate-400">状态日历</p>
-          <h2 className="text-xl font-black">{year} 年 {monthIndex + 1} 月</h2>
-        </div>
+        <h2 className="text-xl font-black">{year} 年 {monthIndex + 1} 月</h2>
         <div className="flex gap-2">
           <button type="button" onClick={() => changeMonth(-1)} className="h-10 w-10 rounded-full bg-cream font-black text-slate-600">‹</button>
           <button type="button" onClick={() => changeMonth(1)} className="h-10 w-10 rounded-full bg-cream font-black text-slate-600">›</button>
@@ -534,7 +533,6 @@ function SwipeProjectCard({ project, deleting, onOpen, onDelete }: {
         <div className="min-w-0">
           <p className="truncate text-2xl font-black">{project.name}</p>
           <p className="mt-2 text-sm font-bold text-slate-500">{project.start_date} → {project.end_date}</p>
-          <p className="mt-3 text-xs font-bold text-slate-400">向左滑动可删除</p>
         </div>
         <span className={`shrink-0 rounded-full px-4 py-2 text-sm font-black ${statusClass}`}>{statusText}</span>
       </button>
