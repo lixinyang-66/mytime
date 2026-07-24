@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireSpaceAuthResponse } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { generateAIPlanWithLLM } from '@/lib/ai';
+import { buildStats } from '@/lib/stats';
 import type { Difficulty } from '@/types';
 
 // GET: 获取指定项目的详细数据（阶段、板块、周计划、记录、复盘）
@@ -55,6 +56,14 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
+    // 统计需要完整的记录集合，不能只使用「最近 30 条」。
+    const { data: allSessions } = await supabase
+      .from('study_sessions')
+      .select('*, task_board:task_boards(*)')
+      .eq('project_id', projectId)
+      .order('study_date', { ascending: false })
+      .limit(500);
+
     // 获取最近记录
     const { data: recentSessions } = await supabase
       .from('study_sessions')
@@ -71,13 +80,22 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(10);
 
+    const currentPlanItems = currentPlan?.weekly_plan_items
+      ? currentPlan.weekly_plan_items.filter((item: { task_board?: { is_custom?: boolean } }) => item.task_board?.is_custom)
+      : [];
+    const customSessions = (allSessions || []).filter((item: { task_board?: { is_custom?: boolean } }) => item.task_board?.is_custom);
+    const customRecentSessions = (recentSessions || []).filter((item: { task_board?: { is_custom?: boolean } }) => item.task_board?.is_custom);
+    const planWithoutItems = currentPlan ? { ...currentPlan, weekly_plan_items: undefined } : null;
+
     return Response.json({
       project,
       phases: phases || [],
       taskBoards: taskBoards || [],
-      currentPlan,
-      recentSessions: recentSessions || [],
+      currentPlan: planWithoutItems,
+      currentPlanItems,
+      recentSessions: customRecentSessions,
       recentReviews: recentReviews || [],
+      stats: buildStats(customSessions, currentPlanItems),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : '读取项目数据失败。';

@@ -1,10 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type TouchEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import type { Space, SpaceMood, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty } from '@/types';
 import { formatChineseDate, getWeekEnd, getWeekStart, minutesToText, timeToToday, toDateKey, weekdayText } from '@/lib/date';
 import { getMoodByKey, MOODS } from '@/lib/moods';
+import MoodRainLoader from '@/components/MoodRainLoader';
 
 const boardColors = [
   'bg-orange-100 text-orange-800 ring-orange-200',
@@ -163,7 +164,7 @@ export default function MyTimeApp() {
     await refreshProject();
   }
 
-  if (loading) return <LoadingCard />;
+  if (loading) return <MoodRainLoader />;
   if (error) return <Shell><ErrorCard message={error} onRetry={() => view === 'project' ? refreshProject() : loadSpace()} /></Shell>;
 
   if (view === 'space' && spaceData) {
@@ -222,36 +223,6 @@ function Shell({ children }: { children: React.ReactNode }) {
   return <main className="safe-bottom mx-auto min-h-screen w-full max-w-3xl px-4 py-5 text-ink sm:px-6">{children}</main>;
 }
 
-function LoadingCard() {
-  const fallingMoods = Array.from({ length: 42 }, (_, index) => {
-    const mood = MOODS[index % MOODS.length];
-    const style = {
-      left: `${(index * 37) % 102 - 2}%`,
-      width: `${46 + (index % 4) * 12}px`,
-      animationDelay: `-${(index % 10) * 0.73}s`,
-      animationDuration: `${5.8 + (index % 6) * 0.7}s`,
-      '--mood-drift': `${((index * 29) % 140) - 70}px`,
-      '--mood-rotation': `${((index * 41) % 70) - 35}deg`,
-    } as CSSProperties & Record<'--mood-drift' | '--mood-rotation', string>;
-    return { mood, index, style };
-  });
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-[#fff8ec]" aria-label="页面加载中" role="status">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,224,138,0.72),transparent_34rem),radial-gradient(circle_at_bottom_right,rgba(158,216,255,0.58),transparent_32rem)]" />
-      {fallingMoods.map(({ mood, index, style }) => (
-        <img
-          key={`${mood.key}-${index}`}
-          src={mood.src}
-          alt=""
-          className="mood-rain-item pointer-events-none absolute top-[-6rem] rounded-full object-cover shadow-xl"
-          style={style}
-        />
-      ))}
-    </div>
-  );
-}
-
 function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="mt-20 rounded-[2rem] bg-white/85 p-7 shadow-soft">
@@ -280,9 +251,13 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
   const [moodRecords, setMoodRecords] = useState(moods);
   const [moodSaving, setMoodSaving] = useState('');
   const [moodError, setMoodError] = useState('');
+  const [moodPage, setMoodPage] = useState(0);
+  const [turningMoodHandle, setTurningMoodHandle] = useState(false);
   const [deletingProjectId, setDeletingProjectId] = useState<number | null>(null);
   const todayKey = toDateKey(new Date());
   const todayMood = moodRecords.find((mood) => mood.mood_date === todayKey);
+  const moodPages = Math.ceil(MOODS.length / 4);
+  const visibleMoods = MOODS.slice(moodPage * 4, moodPage * 4 + 4);
 
   useEffect(() => setMoodRecords(moods), [moods]);
 
@@ -315,6 +290,15 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
     setMoodSaving('');
     if (!response.ok) { setMoodError(payload.error || '保存今天的状态失败。'); return; }
     setMoodRecords((current) => [...current.filter((mood) => mood.mood_date !== todayKey), payload]);
+  }
+
+  function turnMoodHandle() {
+    if (turningMoodHandle) return;
+    setTurningMoodHandle(true);
+    window.setTimeout(() => {
+      setMoodPage((current) => (current + 1) % moodPages);
+      setTurningMoodHandle(false);
+    }, 260);
   }
 
   async function deleteProject(project: ProjectSummary) {
@@ -351,15 +335,16 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
           </div>
           {todayMood ? <img src={getMoodByKey(todayMood.mood_key)?.src} alt={getMoodByKey(todayMood.mood_key)?.label || '今日状态'} className="h-16 w-16 rounded-2xl object-cover" /> : null}
         </div>
-        <div className="mt-5 grid grid-cols-4 gap-3 sm:grid-cols-8">
-          {MOODS.map((mood) => {
+        <div className="mt-5 rounded-[1.6rem] border border-orange-100 bg-gradient-to-br from-amber-50 via-rose-50 to-sky-50 p-3">
+          <div className="grid grid-cols-4 gap-2.5">
+          {visibleMoods.map((mood) => {
             const selected = todayMood?.mood_key === mood.key;
             return (
               <button
                 key={mood.key}
                 type="button"
                 onClick={() => saveMood(mood.key)}
-                disabled={Boolean(moodSaving)}
+                disabled={Boolean(moodSaving) || turningMoodHandle}
                 className={`rounded-2xl p-1.5 text-center transition disabled:opacity-50 ${selected ? 'bg-honey ring-2 ring-orange-300' : 'bg-cream/70 ring-1 ring-orange-100 hover:-translate-y-0.5'}`}
                 title={mood.label}
               >
@@ -368,6 +353,29 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
               </button>
             );
           })}
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-white/75 px-3 py-2.5 shadow-sm">
+            <div className="min-w-0">
+              <p className="text-xs font-black text-slate-600">扭蛋机 · 第 {moodPage + 1} / {moodPages} 批</p>
+              <div className="mt-1 flex gap-1.5" aria-label={`第 ${moodPage + 1} 批，共 ${moodPages} 批`}>
+                {Array.from({ length: moodPages }, (_, index) => (
+                  <span key={index} className={`h-1.5 w-1.5 rounded-full ${index === moodPage ? 'bg-orange-400' : 'bg-orange-100'}`} />
+                ))}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={turnMoodHandle}
+              disabled={turningMoodHandle || Boolean(moodSaving)}
+              className="flex shrink-0 items-center gap-2 rounded-xl bg-ink px-3 py-2 text-xs font-black text-white transition active:scale-95 disabled:opacity-60"
+              aria-label="转动扭蛋机把手，换一批表情"
+            >
+              <span className={`inline-flex h-5 w-2 origin-bottom items-start justify-center rounded-full bg-orange-300 transition-transform duration-300 ${turningMoodHandle ? 'rotate-[-38deg]' : 'rotate-[28deg]'}`}>
+                <span className="-mt-1 h-3 w-3 rounded-full bg-coral ring-2 ring-white" />
+              </span>
+              换一批
+            </button>
+          </div>
         </div>
         {moodError ? <p className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{moodError}</p> : null}
       </section>

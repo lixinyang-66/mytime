@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import MoodRainLoader from '@/components/MoodRainLoader';
 
 type Space = { id: number; name: string };
 type Panel = 'login' | 'create' | 'manage';
@@ -113,6 +114,8 @@ export default function LoginForm() {
     setSuccess(`空间“${space.name}”及其全部数据已删除。再次删除需要重新输入管理密码。`);
     await loadSpaces();
   }
+
+  if (spaceLoading && spaces.length === 0) return <MoodRainLoader />;
 
   return (
     <main className="min-h-screen px-5 py-8 text-ink">
