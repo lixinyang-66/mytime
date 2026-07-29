@@ -106,6 +106,68 @@ function getPhaseConfig(difficulty: 'easy' | 'medium' | 'hard') {
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
 const DEEPSEEK_MODEL = 'deepseek-v4-pro';
 
+export type ProjectClassification = {
+  projectType: ProjectType;
+  projectSubtype: string | null;
+};
+
+const projectTypes: ProjectType[] = ['research', 'fitness', 'competition', 'exam', 'general'];
+
+function fallbackProjectClassification(name: string, goal: string): ProjectClassification {
+  const text = `${name} ${goal}`.toLowerCase();
+  if (/(论文|科研|课题|实验|文献|研究|横向|纵向|毕业设计)/.test(text)) return { projectType: 'research', projectSubtype: null };
+  if (/(健身|减脂|减重|增肌|跑步|运动|训练|体脂)/.test(text)) return { projectType: 'fitness', projectSubtype: null };
+  if (/(比赛|竞赛|挑战杯|互联网\+|创新创业|答辩|参赛)/.test(text)) return { projectType: 'competition', projectSubtype: null };
+  if (/(考试|备考|考研|考公|考证|期中|期末|雅思|托福|四六级)/.test(text)) return { projectType: 'exam', projectSubtype: null };
+  return { projectType: 'general', projectSubtype: null };
+}
+
+function parseProjectClassification(text: string): ProjectClassification | null {
+  const candidates = [text, text.match(/```(?:json)?\s*([\s\S]*?)```/)?.[1], text.match(/\{[\s\S]*\}/)?.[0]];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const parsed = JSON.parse(candidate.trim()) as Record<string, unknown>;
+      const projectType = String(parsed.project_type || parsed.projectType || '');
+      if (!projectTypes.includes(projectType as ProjectType)) continue;
+      const subtype = String(parsed.project_subtype || parsed.projectSubtype || '').trim();
+      return { projectType: projectType as ProjectType, projectSubtype: subtype ? subtype.slice(0, 40) : null };
+    } catch {
+      // 尝试下一个可能的 JSON 内容。
+    }
+  }
+  return null;
+}
+
+/** 根据用户填写的项目名称与目标自动归类，接口不可用时降级为关键词归类。 */
+export async function classifyProjectWithLLM(input: { name: string; goal: string }): Promise<ProjectClassification> {
+  const fallback = fallbackProjectClassification(input.name, input.goal);
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) return fallback;
+
+  try {
+    const response = await fetch(DEEPSEEK_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: DEEPSEEK_MODEL,
+        messages: [
+          { role: 'system', content: '你是个人长期项目分类器。仅根据用户给出的项目名称和目标分类，不要推测敏感信息。' },
+          { role: 'user', content: `项目名称：${input.name}\n项目目标：${input.goal}\n\n请在 research（科研）、fitness（健身）、competition（比赛）、exam（考试）、general（其他长期目标）中选一个最贴切的类型，并给出简短细分方向。严格返回 JSON：{"project_type":"research","project_subtype":"毕业论文"}。若无法细分，project_subtype 为空字符串。` },
+        ],
+        temperature: 0,
+        max_tokens: 180,
+        response_format: { type: 'json_object' },
+      }),
+    });
+    if (!response.ok) return fallback;
+    const data = await response.json();
+    return parseProjectClassification(data.choices?.[0]?.message?.content || '') || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function buildSystemPrompt(): string {
   return `你是 MyTime 的个人项目管理助手，擅长根据项目信息拆解阶段计划。
 
