@@ -532,9 +532,9 @@ function CreationPlanView({ preview, saving, error, onChange, onBack, onConfirm 
 }
 
 function projectStatusMeta(status: ProjectStatus) {
-  if (status === 'completed') return { label: '已完成', className: 'bg-slate-100 text-slate-600' };
-  if (status === 'paused') return { label: '暂缓', className: 'bg-yellow-100 text-yellow-800' };
-  return { label: '进行中', className: 'bg-emerald-100 text-emerald-800' };
+  if (status === 'completed') return { label: '已完成', className: 'bg-[#E7E9ED] text-[#586271]' };
+  if (status === 'paused') return { label: '暂缓', className: 'bg-[#F2E7C5] text-[#775D2C]' };
+  return { label: '进行中', className: 'bg-[#DCEBDD] text-[#3F654A]' };
 }
 
 function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject, onDeleteProject }: {
@@ -551,24 +551,19 @@ function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject
   const rangeEnd = ends[ends.length - 1];
   if (!rangeStart || !rangeEnd) return null;
 
-  const rangeDays = Math.max(1, Math.round((new Date(`${rangeEnd}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000));
+  const rangeDays = Math.max(1, Math.round((new Date(`${rangeEnd}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000) + 1);
   const today = toDateKey(new Date());
   const todayPosition = Math.min(100, Math.max(0, ((new Date(`${today}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000 / rangeDays) * 100));
-  const phaseColors = ['bg-orange-300 text-orange-950', 'bg-sky-300 text-sky-950', 'bg-emerald-300 text-emerald-950', 'bg-violet-300 text-violet-950', 'bg-rose-300 text-rose-950'];
-  const projectPalettes = [
-    { card: 'bg-[#FFF1E6] ring-1 ring-orange-100', track: 'bg-[#FFE5CD]' },
-    { card: 'bg-[#EDF7FF] ring-1 ring-sky-100', track: 'bg-[#DDEFFC]' },
-    { card: 'bg-[#F3F0FF] ring-1 ring-violet-100', track: 'bg-[#E7E1FF]' },
-    { card: 'bg-[#EDFAF3] ring-1 ring-emerald-100', track: 'bg-[#DDF4E8]' },
-    { card: 'bg-[#FFF9DF] ring-1 ring-amber-100', track: 'bg-[#FFF0B8]' },
-  ];
+  const phaseColors = ['bg-[#E2BEA4] text-[#614B3C]', 'bg-[#BBD4DE] text-[#3E5862]', 'bg-[#BBD2C1] text-[#405A48]', 'bg-[#CBBED8] text-[#574762]', 'bg-[#DEBDC2] text-[#68474D]'];
+  const projectPalette = { card: 'bg-[#FBF7F2] ring-1 ring-[#EDE2D7] shadow-[0_8px_18px_rgba(118,95,71,0.05)]', track: 'bg-[#F0ECE6]' };
 
   function position(date: string) {
     return Math.min(100, Math.max(0, ((new Date(`${date}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000 / rangeDays) * 100));
   }
 
   function width(start: string, end: string) {
-    return Math.max(2, Math.min(100 - position(start), ((new Date(`${end}T00:00:00`).getTime() - new Date(`${start}T00:00:00`).getTime()) / 86400000 / rangeDays) * 100));
+    const inclusiveDays = Math.max(1, Math.round((new Date(`${end}T00:00:00`).getTime() - new Date(`${start}T00:00:00`).getTime()) / 86400000) + 1);
+    return Math.max(2, Math.min(100 - position(start), (inclusiveDays / rangeDays) * 100));
   }
 
   return (
@@ -584,30 +579,38 @@ function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject
           const completed = projectPhaseList.filter((phase) => phase.status === 'completed').length;
           const progress = projectPhaseList.length ? Math.round(((completed + ((currentPhase?.progress || 0) / 100)) / projectPhaseList.length) * 100) : 0;
           const status = projectStatusMeta(project.status);
-          const palette = projectPalettes[projectIndex % projectPalettes.length];
+          const palette = projectPalette;
+          const sheepPosition = progress;
+          const todayLabelTranslate = todayPosition <= 1 ? 'translate-x-0' : todayPosition >= 99 ? '-translate-x-full' : '-translate-x-1/2';
           return (
             <SwipeGanttProjectRow key={project.id} panelClassName={palette.card} deleting={deletingProjectId === project.id} onOpen={() => onOpenProject(project.id)} onDelete={() => onDeleteProject(project)}>
-              <div className="mb-1.5 flex items-center justify-between gap-3">
+              <div className="mb-1.5 flex items-center justify-between gap-3 pt-3">
                 <div className="flex min-w-0 items-center gap-2"><span className="truncate text-sm font-black text-slate-700">{project.name}</span><span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-black ${status.className}`}>{status.label}</span></div>
-                <span className="shrink-0 text-xs font-bold text-slate-500">{progress}%</span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <div className="relative h-3 w-20 rounded-full bg-[#E5E5E1] ring-1 ring-[#D2D2CC] sm:w-32 lg:w-72" aria-label={`项目进度 ${progress}%`}>
+                    <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${progress}%`, backgroundImage: 'repeating-linear-gradient(135deg, #30343B 0 5px, #FAF9F5 5px 10px)' }} />
+                    <span className="absolute -top-5 z-20 -translate-x-1/2 text-base leading-none" style={{ left: `${sheepPosition}%` }} aria-hidden="true">🐏</span>
+                  </div>
+                  <span className="text-xs font-bold text-slate-500">{progress}%</span>
+                </div>
               </div>
               <div className={`relative ${projectIndex === 0 ? 'pt-5' : ''}`}>
-                {projectIndex === 0 ? <span className="absolute top-0 z-20 -translate-x-1/2 rounded-full bg-ink px-2 py-1 text-[10px] font-black leading-none text-white shadow-sm" style={{ left: `${todayPosition}%` }}>今天</span> : null}
+                {projectIndex === 0 ? <span className={`absolute top-0 z-20 ${todayLabelTranslate} rounded-full bg-[#4A556A] px-2 py-1 text-[10px] font-black leading-none text-white shadow-sm`} style={{ left: `${todayPosition}%` }}>今天</span> : null}
                 <div className={`relative h-9 overflow-hidden rounded-xl ${palette.track}`}>
                   <span className="absolute inset-y-0 z-10 w-0.5 bg-ink/45" style={{ left: `${todayPosition}%` }} aria-hidden="true" />
                   {projectPhaseList.length ? projectPhaseList.map((phase, phaseIndex) => {
                     const phaseWidth = width(phase.start_date, phase.end_date);
                     const tone = phase.status === 'completed'
-                      ? 'bg-emerald-300 text-emerald-950'
+                      ? 'bg-[#BBD2C1] text-[#405A48]'
                       : phase.status === 'in_progress'
-                        ? 'bg-orange-300 text-orange-950'
+                        ? 'bg-[#E2BEA4] text-[#614B3C]'
                         : phaseColors[(projectIndex + phaseIndex) % phaseColors.length];
                     return (
-                      <span key={phase.id} title={phase.name} className={`absolute top-1 flex h-7 items-center overflow-hidden rounded-lg px-1.5 text-[10px] font-black leading-none whitespace-nowrap ${tone} ${phase.status === 'pending' ? 'opacity-75' : ''}`} style={{ left: `${position(phase.start_date)}%`, width: `${phaseWidth}%` }}>
+                      <span key={phase.id} title={phase.name} className={`absolute top-1 flex h-7 items-center overflow-hidden rounded-md px-1.5 text-[10px] font-black leading-none whitespace-nowrap ${tone} ${phase.status === 'pending' ? 'opacity-75' : ''}`} style={{ left: `${position(phase.start_date)}%`, width: `${phaseWidth}%` }}>
                         {phaseWidth >= 7 ? phase.name : null}
                       </span>
                     );
-                  }) : <span className={`absolute top-1 flex h-7 items-center overflow-hidden rounded-lg px-2 text-[10px] font-black text-slate-700 ${phaseColors[projectIndex % phaseColors.length]}`} style={{ left: `${position(project.start_date)}%`, width: `${width(project.start_date, project.end_date)}%` }}>{project.name}</span>}
+                  }) : <span className={`absolute top-1 flex h-7 items-center overflow-hidden rounded-md px-2 text-[10px] font-black text-slate-700 ${phaseColors[projectIndex % phaseColors.length]}`} style={{ left: `${position(project.start_date)}%`, width: `${width(project.start_date, project.end_date)}%` }}>{project.name}</span>}
                 </div>
               </div>
             </SwipeGanttProjectRow>
