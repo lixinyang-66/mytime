@@ -4,6 +4,8 @@ export type PlanSource = 'ai' | 'manual' | 'modified';
 export type PhaseStatus = 'pending' | 'in_progress' | 'completed';
 export type ProjectStatus = 'active' | 'completed' | 'paused';
 export type ReviewType = 'daily' | 'weekly' | 'monthly';
+export type ProjectType = 'research' | 'fitness' | 'competition' | 'exam' | 'general';
+export type SessionOutcome = 'progressed' | 'completed' | 'blocked';
 
 // === V2.0: Space ===
 export type Space = {
@@ -32,6 +34,8 @@ export type Project = {
   total_goal: string;
   goal: string | null;
   difficulty: Difficulty;
+  project_type: ProjectType;
+  project_subtype: string | null;
   plan_source: PlanSource;
   daily_start_time: string;
   daily_end_time: string;
@@ -44,7 +48,7 @@ export type Project = {
   updated_at?: string;
 };
 
-export type ProjectSummary = Pick<Project, 'id' | 'name' | 'slug' | 'start_date' | 'end_date' | 'status' | 'difficulty'>;
+export type ProjectSummary = Pick<Project, 'id' | 'name' | 'slug' | 'start_date' | 'end_date' | 'status' | 'difficulty' | 'project_type' | 'project_subtype'>;
 
 // === V2.0: Project Phases (Gantt chart) ===
 export type ProjectPhase = {
@@ -102,6 +106,7 @@ export type WeeklyPlanItem = {
   weekly_plan_id: number;
   task_board_id: number;
   daily_minutes: number;
+  expected_minutes?: number | null;
   task_board?: TaskBoard;
   created_at?: string;
   updated_at?: string;
@@ -110,7 +115,9 @@ export type WeeklyPlanItem = {
 export type StudySession = {
   id: number;
   project_id: number;
-  task_board_id: number;
+  task_board_id: number | null;
+  phase_id: number | null;
+  outcome_status: SessionOutcome;
   study_date: string;
   start_time: string;
   end_time: string;

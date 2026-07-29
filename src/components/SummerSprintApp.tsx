@@ -2,9 +2,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
-import type { Space, SpaceMood, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty } from '@/types';
-import { formatChineseDate, getWeekEnd, getWeekStart, minutesToText, timeToToday, toDateKey, weekdayText } from '@/lib/date';
+import type { Space, SpaceMood, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty, ProjectType, SessionOutcome } from '@/types';
+import { formatChineseDate, getWeekEnd, getWeekStart, minutesToText, toDateKey } from '@/lib/date';
 import { getMoodByKey, MOODS } from '@/lib/moods';
+import { getProjectTypeLabel, PROJECT_TYPE_OPTIONS } from '@/lib/knowledge';
 import MoodRainLoader from '@/components/MoodRainLoader';
 
 const boardColors = [
@@ -16,16 +17,10 @@ const boardColors = [
   'bg-rose-100 text-rose-800 ring-rose-200',
 ];
 
-function getMinutesBetween(startTime: string, endTime: string): number {
-  const [sh, sm] = startTime.split(':').map(Number);
-  const [eh, em] = endTime.split(':').map(Number);
-  return Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
-}
-
 type View = 'space' | 'project';
 type ProjectMode = 'home' | 'gantt' | 'focus' | 'finish' | 'plan' | 'stats' | 'boards' | 'review';
 
-type RunningSession = { taskBoardId: number; startAt: string; pausedMs: number };
+type RunningSession = { taskBoardId: number | null; phaseId: number | null; startAt: string; pausedMs: number };
 
 type SpaceData = { space: Space; projects: ProjectSummary[]; moods: SpaceMood[] };
 
@@ -53,6 +48,7 @@ export default function MyTimeApp() {
   const [paused, setPaused] = useState(false);
   const [pauseStartedAt, setPauseStartedAt] = useState<number | null>(null);
   const [content, setContent] = useState('');
+  const [outcomeStatus, setOutcomeStatus] = useState<SessionOutcome>('progressed');
   const [saving, setSaving] = useState(false);
   const [recordFilter, setRecordFilter] = useState<number | 'all'>('all');
 
@@ -99,9 +95,7 @@ export default function MyTimeApp() {
   const planItems = useMemo(() => projectData?.currentPlanItems || [], [projectData?.currentPlanItems]);
   const activeBoards = useMemo(() => planItems.map((item) => item.task_board).filter(Boolean) as TaskBoard[], [planItems]);
   const fallbackBoard = projectData?.taskBoards[0];
-  const suggestedBoardId = activeBoards[0]?.id || fallbackBoard?.id || 0;
-  const startTime = projectData?.project.daily_start_time || '19:30';
-  const endTime = projectData?.project.daily_end_time || '23:30';
+  const suggestedBoardId = activeBoards[0]?.id || fallbackBoard?.id || null;
 
   const elapsedSeconds = useMemo(() => {
     if (!session) return 0;
@@ -111,13 +105,13 @@ export default function MyTimeApp() {
   }, [session, now, paused, pauseStartedAt]);
 
   function startFocus(taskBoardId = suggestedBoardId) {
-    if (!taskBoardId) {
-      alert('请先创建任务板块，并在本周计划中至少选择 1 个任务板块。');
-      setMode('plan');
-      return;
-    }
-    setSession({ taskBoardId, startAt: new Date().toISOString(), pausedMs: 0 });
-    setPaused(false); setPauseStartedAt(null); setContent(''); setMode('focus');
+    const today = toDateKey(new Date());
+    const currentPhase = projectData?.phases.find((phase) => phase.status === 'in_progress')
+      || projectData?.phases.find((phase) => phase.start_date <= today && phase.end_date >= today)
+      || projectData?.phases.find((phase) => phase.status === 'pending')
+      || null;
+    setSession({ taskBoardId, phaseId: currentPhase?.id || null, startAt: new Date().toISOString(), pausedMs: 0 });
+    setPaused(false); setPauseStartedAt(null); setContent(''); setOutcomeStatus('progressed'); setMode('focus');
   }
 
   function togglePause() {
@@ -154,6 +148,8 @@ export default function MyTimeApp() {
         end_time: end.toISOString(),
         duration_minutes: Math.max(1, Math.round(elapsedSeconds / 60)),
         task_board_id: session.taskBoardId,
+        phase_id: session.phaseId,
+        outcome_status: outcomeStatus,
         content,
       }),
     });
@@ -188,7 +184,7 @@ export default function MyTimeApp() {
       <Shell>
         {mode === 'home' && (
           <ProjectHomeView
-            now={now} data={projectData} startTime={startTime} endTime={endTime}
+            now={now} data={projectData}
             onStart={() => startFocus()} onPlan={() => setMode('plan')} onStats={() => setMode('stats')}
             onBoards={() => setMode('boards')} onGantt={() => setMode('gantt')} onReview={() => setMode('review')}
             onBack={() => { setView('space'); setProjectData(null); setSelectedProjectId(null); }}
@@ -205,8 +201,8 @@ export default function MyTimeApp() {
           />
         )}
         {mode === 'finish' && session && (
-          <FinishView board={sessionBoard} elapsedSeconds={elapsedSeconds} content={content} saving={saving}
-            onContent={setContent} onBack={() => setMode('focus')} onSave={saveSession} />
+          <FinishView board={sessionBoard} elapsedSeconds={elapsedSeconds} content={content} outcome={outcomeStatus} saving={saving}
+            onContent={setContent} onOutcome={setOutcomeStatus} onBack={() => setMode('focus')} onSave={saveSession} />
         )}
         {mode === 'plan' && <PlanView data={projectData} projectId={selectedProjectId!} onBack={() => setMode('home')} onBoards={() => setMode('boards')} onSaved={async () => { await refreshProject(); setMode('home'); }} />}
         {mode === 'boards' && <BoardsView boards={projectData.taskBoards} projectId={selectedProjectId!} onBack={() => setMode('home')} onSaved={refreshProject} />}
@@ -245,6 +241,8 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
   const [dailyStart, setDailyStart] = useState('19:30');
   const [dailyEnd, setDailyEnd] = useState('23:30');
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
+  const [projectType, setProjectType] = useState<ProjectType>('research');
+  const [projectSubtype, setProjectSubtype] = useState('');
   const [useAI, setUseAI] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -269,13 +267,13 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
     const response = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, goal, start_date: startDate, end_date: endDate, daily_start_time: dailyStart, daily_end_time: dailyEnd, difficulty, use_ai_plan: useAI }),
+      body: JSON.stringify({ name, goal, start_date: startDate, end_date: endDate, daily_start_time: dailyStart, daily_end_time: dailyEnd, difficulty, project_type: projectType, project_subtype: projectSubtype, use_ai_plan: useAI }),
     });
     const payload = await response.json().catch(() => ({}));
     setSaving(false);
     if (!response.ok) { setError(payload.error || '创建项目失败。'); return; }
     setShowCreate(false);
-    setName(''); setGoal(''); setEndDate('');
+    setName(''); setGoal(''); setEndDate(''); setProjectSubtype('');
     await onRefresh();
   }
 
@@ -406,12 +404,17 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
             <Field label="项目名称" value={name} onChange={setName} />
             <Field label="项目目标" value={goal} onChange={setGoal} multiline />
             <div className="grid grid-cols-2 gap-3">
-              <Field label="开始日期" type="date" value={startDate} onChange={setStartDate} />
-              <Field label="截止日期" type="date" value={endDate} onChange={setEndDate} />
+              <label className="block">
+                <span className="mb-2 block text-sm font-black text-slate-700">项目类型</span>
+                <select value={projectType} onChange={(e) => setProjectType(e.target.value as ProjectType)} className="w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100">
+                  {PROJECT_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              <Field label="细分方向（选填）" value={projectSubtype} onChange={setProjectSubtype} placeholder="如：毕业论文、减脂" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="每天开始" type="time" value={dailyStart} onChange={setDailyStart} />
-              <Field label="每天结束" type="time" value={dailyEnd} onChange={setDailyEnd} />
+              <Field label="开始日期" type="date" value={startDate} onChange={setStartDate} />
+              <Field label="截止日期" type="date" value={endDate} onChange={setEndDate} />
             </div>
             <label className="block">
               <span className="mb-2 block text-sm font-black text-slate-700">任务难度</span>
@@ -425,7 +428,7 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
               <input type="checkbox" checked={useAI} onChange={(e) => setUseAI(e.target.checked)} className="h-5 w-5 rounded" />
               <div>
                 <p className="text-sm font-black text-sky-800">AI 自动生成项目计划</p>
-                <p className="text-xs font-bold text-sky-600">根据目标、时间和难度自动生成阶段甘特图</p>
+                <p className="text-xs font-bold text-sky-600">结合项目类型、目标与截止日期生成阶段路线图</p>
               </div>
             </label>
             <button type="submit" disabled={saving} className="w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在创建...' : '创建项目'}</button>
@@ -546,114 +549,89 @@ function SwipeProjectCard({ project, deleting, onOpen, onDelete }: {
 }
 
 // === PROJECT HOME VIEW ===
-function ProjectHomeView({ now, data, startTime, endTime, onStart, onPlan, onStats, onBoards, onGantt, onReview, onBack, recordFilter, onRecordFilter }: {
-  now: Date; data: ProjectData; startTime: string; endTime: string;
+function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGantt, onReview, onBack, recordFilter, onRecordFilter }: {
+  now: Date; data: ProjectData;
   onStart: () => void; onPlan: () => void; onStats: () => void; onBoards: () => void;
   onGantt: () => void; onReview: () => void; onBack: () => void;
   recordFilter: number | 'all'; onRecordFilter: (v: number | 'all') => void;
 }) {
-  const status = getStudyStatus(now, startTime, endTime);
+  const currentPhase = data.phases.find((phase) => phase.status === 'in_progress')
+    || data.phases.find((phase) => phase.start_date <= toDateKey(now) && phase.end_date >= toDateKey(now))
+    || data.phases.find((phase) => phase.status === 'pending')
+    || data.phases.at(-1);
   const activeBoards = data.currentPlanItems.map((item) => item.task_board).filter(Boolean) as TaskBoard[];
-  const activeBoardIds = new Set(activeBoards.map((b) => b.id));
-  const recentRecords = data.recentSessions.filter((item) => activeBoardIds.has(item.task_board_id));
+  const recentRecords = data.recentSessions;
   const filteredRecords = recordFilter === 'all' ? recentRecords : recentRecords.filter((item) => item.task_board_id === recordFilter);
-  const planTotal = data.currentPlanItems.reduce((acc, item) => acc + item.daily_minutes, 0);
-  const targetMinutes = getMinutesBetween(startTime, endTime);
+  const weekExpected = data.currentPlanItems.reduce((sum, item) => sum + Number(item.expected_minutes ?? (item.daily_minutes * 7)), 0);
 
   return (
     <div className="space-y-5">
       <header className="flex items-center justify-between pt-2">
         <div>
-          <p className="text-sm font-bold text-orange-700">MyTime · {data.project.name}</p>
-          <h1 className="text-3xl font-black tracking-tight">{formatChineseDate(now)} · {weekdayText(now)}</h1>
+          <p className="text-sm font-bold text-orange-700">MyTime · {getProjectTypeLabel(data.project.project_type)}</p>
+          <h1 className="text-2xl font-black tracking-tight">{data.project.name}</h1>
         </div>
         <button onClick={onBack} className="rounded-full bg-white/70 px-4 py-2 text-xs font-bold text-slate-500 shadow-sm">返回空间</button>
       </header>
 
-      <section className="overflow-hidden rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white">
-        <p className="text-sm font-bold text-slate-500">项目目标</p>
-        <h2 className="mt-2 text-base font-black leading-7 text-slate-700">{data.project.goal || data.project.total_goal}</h2>
-        <div className="mt-5 grid grid-cols-2 gap-3 text-sm font-bold text-slate-600">
-          <div className="rounded-2xl bg-cream p-4">开始：{data.project.start_date}</div>
-          <div className="rounded-2xl bg-cream p-4">截止：{data.project.end_date}</div>
+      <section className="rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-slate-500">项目目标</p>
+            <h2 className="mt-2 text-base font-black leading-7 text-slate-700">{data.project.goal || data.project.total_goal}</h2>
+          </div>
+          <span className="shrink-0 rounded-full bg-sky-100 px-3 py-1.5 text-xs font-black text-sky-800">{data.project.project_subtype || getProjectTypeLabel(data.project.project_type)}</span>
         </div>
-        <div className="mt-3 flex gap-2">
-          <span className={`rounded-full px-3 py-1 text-xs font-black ${data.project.plan_source === 'ai' ? 'bg-sky-100 text-sky-800' : data.project.plan_source === 'modified' ? 'bg-violet-100 text-violet-800' : 'bg-cream text-slate-600'}`}>
-            {data.project.plan_source === 'ai' ? 'AI 计划' : data.project.plan_source === 'modified' ? '手动修改' : '手动计划'}
-          </span>
-          <span className={`rounded-full px-3 py-1 text-xs font-black ${data.project.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-800' : data.project.difficulty === 'hard' ? 'bg-rose-100 text-rose-800' : 'bg-yellow-100 text-yellow-800'}`}>
-            {data.project.difficulty === 'easy' ? '简单' : data.project.difficulty === 'hard' ? '困难' : '中等'}
-          </span>
+        <div className="mt-5 rounded-[1.6rem] bg-cream p-5">
+          <p className="text-sm font-bold text-slate-500">当前阶段</p>
+          <p className="mt-1 text-xl font-black text-slate-800">{currentPhase?.name || '先建立项目路线图'}</p>
+          <p className="mt-2 text-xs font-bold text-slate-500">{currentPhase ? `${currentPhase.start_date} — ${currentPhase.end_date} · ${currentPhase.progress}%` : '路线图会帮助你确认先后顺序。'}</p>
         </div>
+        <button onClick={onStart} className="mt-5 w-full rounded-[1.7rem] bg-gradient-to-r from-orange-400 to-amber-300 px-6 py-5 text-lg font-black text-white shadow-lg shadow-orange-100 active:scale-[0.99]">
+          开始专注
+        </button>
       </section>
 
-      <section className="overflow-hidden rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white">
-        <div className="flex items-start justify-between gap-4">
+      <section className="rounded-[2rem] bg-white/80 p-5 shadow-soft">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-bold text-slate-500">每天固定时间</p>
-            <p className="mt-2 text-4xl font-black tracking-tight">{startTime}—{endTime}</p>
-            <p className="mt-1 text-sm font-bold text-slate-500">共 {targetMinutes} 分钟</p>
+            <p className="text-sm font-bold text-slate-500">本周推进</p>
+            <h2 className="text-xl font-black">{data.currentPlan?.theme || '还未选择本周行动'}</h2>
           </div>
-          <div className="rounded-2xl bg-honey/80 px-4 py-3 text-right">
-            <p className="text-xs font-bold text-orange-700">当前状态</p>
-            <p className="text-sm font-black text-orange-900">{status.label}</p>
+          <button onClick={onPlan} className="rounded-full bg-mint/70 px-4 py-2 text-sm font-black text-emerald-800">调整</button>
+        </div>
+        {data.currentPlanItems.length ? (
+          <div className="mt-4 space-y-2">
+            {data.currentPlanItems.map((item) => (
+              <div key={item.id} className="flex items-center justify-between rounded-2xl bg-cream/70 px-4 py-3">
+                <span className="text-sm font-black text-slate-700">{item.task_board?.name || '未命名行动'}</span>
+                {Number(item.expected_minutes ?? 0) > 0 ? <span className="text-xs font-bold text-slate-500">预计 {minutesToText(Number(item.expected_minutes))}</span> : null}
+              </div>
+            ))}
           </div>
-        </div>
-        <div className="mt-7 rounded-[1.6rem] bg-cream px-5 py-4">
-          <p className="text-sm font-bold text-slate-500">{status.prefix}</p>
-          <p className="mt-1 text-2xl font-black">{status.text}</p>
-        </div>
-        <button onClick={onStart} className="mt-6 w-full rounded-[1.7rem] bg-gradient-to-r from-orange-400 to-amber-300 px-6 py-5 text-lg font-black text-white shadow-lg shadow-orange-100 active:scale-[0.99]">
-          开始记录这一段时间
-        </button>
+        ) : <p className="mt-4 text-sm font-bold text-slate-500">只保留 1—3 件本周最重要的推进事项。</p>}
+        {weekExpected > 0 ? <p className="mt-3 text-xs font-bold text-slate-500">本周预计投入 {minutesToText(weekExpected)}</p> : null}
       </section>
 
       <div className="grid grid-cols-3 gap-2">
-        <button onClick={onGantt} className="rounded-2xl bg-sky-100 p-4 text-center">
-          <p className="text-xs font-black text-sky-800">项目甘特图</p>
-          <p className="mt-1 text-lg font-black text-sky-900">{data.phases.length} 阶段</p>
-        </button>
-        <button onClick={onPlan} className="rounded-2xl bg-mint/60 p-4 text-center">
-          <p className="text-xs font-black text-emerald-800">周计划</p>
-          <p className="mt-1 text-lg font-black text-emerald-900">{planTotal} 分钟/天</p>
-        </button>
-        <button onClick={onReview} className="rounded-2xl bg-violet-100 p-4 text-center">
-          <p className="text-xs font-black text-violet-800">AI 复盘</p>
-          <p className="mt-1 text-lg font-black text-violet-900">{data.recentReviews.length} 条</p>
-        </button>
+        <button onClick={onGantt} className="rounded-2xl bg-sky-100 p-4 text-center"><p className="text-xs font-black text-sky-800">路线图</p><p className="mt-1 text-lg font-black text-sky-900">{data.phases.length}</p></button>
+        <button onClick={onBoards} className="rounded-2xl bg-orange-100 p-4 text-center"><p className="text-xs font-black text-orange-800">行动项</p><p className="mt-1 text-lg font-black text-orange-900">{data.taskBoards.length}</p></button>
+        <button onClick={onReview} className="rounded-2xl bg-violet-100 p-4 text-center"><p className="text-xs font-black text-violet-800">AI 复盘</p><p className="mt-1 text-lg font-black text-violet-900">{data.recentReviews.length}</p></button>
       </div>
 
-      <section className="rounded-[2rem] bg-white/80 p-5 shadow-soft">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-bold text-slate-500">本周计划 · 每天 {planTotal} 分钟</p>
-            <h2 className="text-xl font-black">{data.currentPlan?.theme || '还没有配置本周计划'}</h2>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={onBoards} className="rounded-full bg-sky-100 px-4 py-2 text-sm font-black text-sky-800">板块</button>
-            <button onClick={onStats} className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm">统计</button>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {data.currentPlanItems.length === 0 ? <p className="col-span-full text-sm text-slate-500">请先配置本周计划。</p> : data.currentPlanItems.map((item, index) => <BoardPlanCard key={item.id} item={item} index={index} />)}
-        </div>
-      </section>
-
       <section className="grid grid-cols-2 gap-3">
-        <MetricCard label="本周累计" value={minutesToText(data.stats.weekMinutes)} tone="bg-sky-100" />
-        <MetricCard label="完成率" value={`${data.stats.completionRate}%`} tone="bg-orange-100" />
+        <MetricCard label="本周专注" value={minutesToText(data.stats.weekMinutes)} tone="bg-sky-100" />
         <MetricCard label="连续记录" value={`${data.stats.streakDays}天`} tone="bg-emerald-100" />
-        <MetricCard label="今日记录" value={minutesToText(data.stats.todayMinutes)} tone="bg-yellow-100" />
+        <MetricCard label="预计投入" value={weekExpected ? minutesToText(weekExpected) : '未设'} tone="bg-orange-100" />
+        <button onClick={onStats} className="rounded-[1.6rem] bg-yellow-100 p-4 text-left"><p className="text-sm font-bold text-slate-500">查看统计</p><p className="mt-2 text-2xl font-black">{data.stats.completionRate}%</p></button>
       </section>
 
       <section className="rounded-[2rem] bg-white/80 p-5 shadow-soft">
-        <h2 className="mb-4 text-lg font-black">最近记录</h2>
-        <div className="no-scrollbar mb-4 flex gap-2 overflow-x-auto">
+        <h2 className="mb-4 text-lg font-black">最近专注</h2>
+        {activeBoards.length ? <div className="no-scrollbar mb-4 flex gap-2 overflow-x-auto">
           <button onClick={() => onRecordFilter('all')} className={`shrink-0 rounded-full px-4 py-2 text-sm font-black ${recordFilter === 'all' ? 'bg-ink text-white' : 'bg-cream text-slate-600'}`}>全部</button>
-          {activeBoards.map((board) => (
-            <button key={board.id} onClick={() => onRecordFilter(board.id)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-black ${recordFilter === board.id ? 'bg-ink text-white' : 'bg-cream text-slate-600'}`}>{board.name}</button>
-          ))}
-        </div>
+          {activeBoards.map((board) => <button key={board.id} onClick={() => onRecordFilter(board.id)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-black ${recordFilter === board.id ? 'bg-ink text-white' : 'bg-cream text-slate-600'}`}>{board.name}</button>)}
+        </div> : null}
         <RecordList records={filteredRecords} />
       </section>
     </div>
@@ -803,36 +781,18 @@ function GanttView({ data, onBack, onRefresh }: { data: ProjectData; onBack: () 
 
 // === REVIEW VIEW ===
 function ReviewView({ data, projectId, onBack, onRefresh }: { data: ProjectData; projectId: number; onBack: () => void; onRefresh: () => void }) {
-  const [reviewType, setReviewType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  const [summary, setSummary] = useState('');
-  const [insights, setInsights] = useState('');
-  const [nextSteps, setNextSteps] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
-  async function saveReview(e: React.FormEvent) {
-    e.preventDefault();
-    if (!summary.trim()) { alert('请填写复盘总结。'); return; }
-    setSaving(true);
-    const today = toDateKey(new Date());
-    const response = await fetch('/api/reviews', {
+  async function generateReview() {
+    setGenerating(true);
+    const response = await fetch('/api/ai-review', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        projectId,
-        review_type: reviewType,
-        period_start: today,
-        period_end: today,
-        summary,
-        insights: insights || null,
-        next_steps: nextSteps || null,
-        total_minutes: data.stats.weekMinutes,
-        completion_rate: data.stats.completionRate,
-      }),
+      body: JSON.stringify({ projectId }),
     });
     const payload = await response.json().catch(() => ({}));
-    setSaving(false);
-    if (!response.ok) { alert(payload.error || '保存复盘失败。'); return; }
-    setSummary(''); setInsights(''); setNextSteps('');
+    setGenerating(false);
+    if (!response.ok) { alert(payload.error || '生成 AI 周复盘失败。'); return; }
     await onRefresh();
   }
 
@@ -842,34 +802,9 @@ function ReviewView({ data, projectId, onBack, onRefresh }: { data: ProjectData;
 
       <section className="rounded-[2rem] bg-white/90 p-6 shadow-soft">
         <p className="text-sm font-bold text-slate-500">AI 复盘</p>
-        <h1 className="mt-1 text-2xl font-black">记录你的反思与成长</h1>
-        <p className="mt-2 rounded-2xl bg-violet-50 p-4 text-sm font-bold leading-6 text-violet-700">
-          当浪费时间去玩的快乐感小于对荒废时间的愧疚感后，你会增强自律性。完成任务的成就感又会督促你坚持下去。
-        </p>
-
-        <form onSubmit={saveReview} className="mt-5 space-y-4">
-          <label className="block">
-            <span className="mb-2 block text-sm font-black text-slate-700">复盘类型</span>
-            <select value={reviewType} onChange={(e) => setReviewType(e.target.value as 'daily' | 'weekly' | 'monthly')} className="w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100">
-              <option value="daily">每日复盘</option>
-              <option value="weekly">每周复盘</option>
-              <option value="monthly">每月复盘</option>
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-black text-slate-700">这段时间做了什么？完成了什么？</span>
-            <textarea value={summary} onChange={(e) => setSummary(e.target.value)} rows={4} placeholder="例如：完成了文献综述的结构调整，补充了两篇核心参考文献..." className="w-full resize-none rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-black text-slate-700">有什么感悟或发现？（选填）</span>
-            <textarea value={insights} onChange={(e) => setInsights(e.target.value)} rows={3} placeholder="例如：发现下午 3 点效率最高，晚上容易分心..." className="w-full resize-none rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-black text-slate-700">下一步计划（选填）</span>
-            <textarea value={nextSteps} onChange={(e) => setNextSteps(e.target.value)} rows={2} placeholder="例如：明天先把最难的部分解决..." className="w-full resize-none rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
-          </label>
-          <button type="submit" disabled={saving} className="w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在保存...' : '保存复盘'}</button>
-        </form>
+        <h1 className="mt-1 text-2xl font-black">从真实投入里看下一步</h1>
+        <p className="mt-3 rounded-2xl bg-violet-50 p-4 text-sm font-bold leading-6 text-violet-700">AI 会汇总本空间本周的专注时长、完成内容、受阻标记和每日状态，并以当前项目为重点给出建议。状态只用于观察线索，不作诊断或因果判断。</p>
+        <button onClick={generateReview} disabled={generating} className="mt-5 w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{generating ? '正在生成周复盘…' : '生成本周 AI 复盘'}</button>
       </section>
 
       {data.recentReviews.length > 0 ? (
@@ -901,9 +836,8 @@ function BoardPlanCard({ item, index }: { item: WeeklyPlanItem; index: number })
   const board = item.task_board;
   return (
     <div className={`rounded-[1.4rem] p-4 ring-1 ${boardColors[index % boardColors.length]}`}>
-      <p className="text-sm font-black">{board?.name || '任务板块'}</p>
-      <p className="mt-2 text-2xl font-black">{item.daily_minutes}</p>
-      <p className="text-xs opacity-75">分钟 / 天</p>
+      <p className="text-sm font-black">{board?.name || '行动项'}</p>
+      {Number(item.expected_minutes ?? 0) > 0 ? <><p className="mt-2 text-2xl font-black">{minutesToText(Number(item.expected_minutes))}</p><p className="text-xs opacity-75">预计投入</p></> : <p className="mt-2 text-xs opacity-75">本周主行动</p>}
       <p className="mt-3 line-clamp-2 text-xs opacity-75">{board?.kind === 'long_term' ? '长期' : '临时'} · {board?.goal || '未设目标'}</p>
     </div>
   );
@@ -925,12 +859,12 @@ function FocusView({ boards, session, board, elapsedSeconds, paused, onPause, on
         <p className="mt-4 text-sm font-bold text-slate-500">时间正在流逝，请把它交给真正重要的事</p>
       </div>
       <div className="rounded-[2rem] bg-white/85 p-5 text-center shadow-soft">
-        <p className="text-sm font-bold text-slate-500">当前任务板块：{board?.name || '未选择'}</p>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <p className="text-sm font-bold text-slate-500">本次行动：{board?.name || '未关联行动项'}</p>
+        {boards.length ? <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {boards.map((item) => (
             <button key={item.id} onClick={() => onChangeBoard(item.id)} className={`rounded-2xl px-3 py-3 text-sm font-black ${item.id === session.taskBoardId ? 'bg-honey text-orange-900 ring-2 ring-orange-200' : 'bg-slate-50 text-slate-500'}`}>{item.name}</button>
           ))}
-        </div>
+        </div> : null}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <button onClick={onPause} className="rounded-[1.5rem] bg-white px-6 py-5 text-lg font-black shadow-soft">{paused ? '继续' : '暂停'}</button>
@@ -940,20 +874,29 @@ function FocusView({ boards, session, board, elapsedSeconds, paused, onPause, on
   );
 }
 
-function FinishView({ board, elapsedSeconds, content, saving, onContent, onBack, onSave }: {
-  board: TaskBoard | null | undefined; elapsedSeconds: number; content: string; saving: boolean;
-  onContent: (v: string) => void; onBack: () => void; onSave: () => void;
+function FinishView({ board, elapsedSeconds, content, outcome, saving, onContent, onOutcome, onBack, onSave }: {
+  board: TaskBoard | null | undefined; elapsedSeconds: number; content: string; outcome: SessionOutcome; saving: boolean;
+  onContent: (v: string) => void; onOutcome: (v: SessionOutcome) => void; onBack: () => void; onSave: () => void;
 }) {
   return (
     <div className="space-y-5 pt-8">
       <button onClick={onBack} className="rounded-full bg-white/80 px-4 py-2 text-sm font-bold text-slate-600">返回计时</button>
       <section className="rounded-[2rem] bg-white/90 p-6 shadow-soft">
         <p className="text-sm font-bold text-slate-500">这一段时间过去了</p>
-        <h1 className="mt-2 text-3xl font-black">{board?.name || '任务'} · {minutesToText(Math.round(elapsedSeconds / 60))}</h1>
+        <h1 className="mt-2 text-3xl font-black">{board?.name || '本次专注'} · {minutesToText(Math.round(elapsedSeconds / 60))}</h1>
         <label className="mt-6 block">
           <span className="mb-2 block text-sm font-black text-slate-700">记录这段时间你真正做了什么 *</span>
           <textarea value={content} onChange={(e) => onContent(e.target.value)} rows={5} placeholder="例如：修改论文第三章 / 完成考公课程第五讲 / 浏览20个秋招岗位" className="w-full resize-none rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
         </label>
+        <div className="mt-5 grid grid-cols-3 gap-2">
+          {([
+            ['progressed', '已推进'],
+            ['completed', '已完成'],
+            ['blocked', '被卡住'],
+          ] as const).map(([value, label]) => (
+            <button key={value} type="button" onClick={() => onOutcome(value)} className={`rounded-2xl px-3 py-3 text-sm font-black transition ${outcome === value ? 'bg-honey text-orange-900 ring-2 ring-orange-200' : 'bg-cream text-slate-500'}`}>{label}</button>
+          ))}
+        </div>
         <p className="mt-3 text-xs font-bold leading-6 text-slate-500">时间长短不是目的。请诚实记录这段时间被交给了什么。</p>
         <button onClick={onSave} disabled={saving || !content.trim()} className="mt-5 w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在保存...' : '保存记录'}</button>
       </section>
@@ -964,7 +907,7 @@ function FinishView({ board, elapsedSeconds, content, saving, onContent, onBack,
 function PlanView({ data, projectId, onBack, onBoards, onSaved }: { data: ProjectData; projectId: number; onBack: () => void; onBoards: () => void; onSaved: () => void }) {
   const weekStart = getWeekStart();
   const weekEnd = getWeekEnd();
-  const initialItems = new Map(data.currentPlanItems.map((item) => [item.task_board_id, item.daily_minutes]));
+  const initialItems = new Map(data.currentPlanItems.map((item) => [item.task_board_id, Number(item.expected_minutes ?? (item.daily_minutes * 7))]));
   const [selectedBoardIds, setSelectedBoardIds] = useState<number[]>(() => data.currentPlanItems.map((item) => item.task_board_id));
   const [minutesByBoard, setMinutesByBoard] = useState<Record<number, number>>(() => {
     const result: Record<number, number> = {};
@@ -975,23 +918,24 @@ function PlanView({ data, projectId, onBack, onBoards, onSaved }: { data: Projec
   const selectedBoards = data.taskBoards.filter((board) => selectedBoardIds.includes(board.id));
   const selectedCount = selectedBoardIds.length;
   const total = selectedBoardIds.reduce((acc, boardId) => acc + Number(minutesByBoard[boardId] || 0), 0);
-  const targetMinutes = getMinutesBetween(data.project.daily_start_time || '19:30', data.project.daily_end_time || '23:30');
-  const remainingMinutes = targetMinutes - total;
-  const generatedTheme = selectedBoards.length ? `${selectedBoards.map((board) => board.name).join(' / ')}推进周` : '时间感知周';
+  const today = toDateKey(new Date());
+  const currentPhase = data.phases.find((phase) => phase.status === 'in_progress')
+    || data.phases.find((phase) => phase.start_date <= today && phase.end_date >= today)
+    || data.phases.find((phase) => phase.status === 'pending');
+  const generatedTheme = selectedBoards.length ? `${selectedBoards.map((board) => board.name).join(' / ')}` : '本周推进';
 
   function toggleBoard(boardId: number) {
     if (selectedBoardIds.includes(boardId)) { setSelectedBoardIds(selectedBoardIds.filter((id) => id !== boardId)); return; }
+    if (selectedBoardIds.length >= 3) { alert('本周最多保留 3 项推进事项。'); return; }
     setSelectedBoardIds([...selectedBoardIds, boardId]);
   }
 
   async function save() {
-    if (selectedCount < 1) { alert('每周计划至少选择 1 个任务板块。'); return; }
-    if (selectedBoardIds.some((boardId) => Number(minutesByBoard[boardId] || 0) <= 0)) { alert('请为已选择的每个任务板块配置每天时间。'); return; }
-    if (total !== targetMinutes) { alert(`所有板块每天时间之和必须等于项目每日固定时间 ${targetMinutes} 分钟。当前合计 ${total} 分钟，还${remainingMinutes > 0 ? `差 ${remainingMinutes}` : `多 ${Math.abs(remainingMinutes)}`} 分钟。`); return; }
+    if (selectedCount < 1) { alert('请至少选择 1 项本周推进事项。'); return; }
     setSaving(true);
     const response = await fetch('/api/plans', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_id: projectId, theme: generatedTheme, week_start_date: toDateKey(weekStart), week_end_date: toDateKey(weekEnd), items: selectedBoardIds.map((task_board_id) => ({ task_board_id, daily_minutes: minutesByBoard[task_board_id] || 0 })) }),
+      body: JSON.stringify({ project_id: projectId, theme: generatedTheme, week_start_date: toDateKey(weekStart), week_end_date: toDateKey(weekEnd), items: selectedBoardIds.map((task_board_id) => ({ task_board_id, expected_minutes: minutesByBoard[task_board_id] || 0 })) }),
     });
     const payload = await response.json().catch(() => ({}));
     setSaving(false);
@@ -1003,17 +947,16 @@ function PlanView({ data, projectId, onBack, onBoards, onSaved }: { data: Projec
     <div className="space-y-5 pt-4">
       <div className="flex justify-between gap-3">
         <button onClick={onBack} className="rounded-full bg-white/80 px-4 py-2 text-sm font-bold text-slate-600">返回首页</button>
-        <button onClick={onBoards} className="rounded-full bg-sky-100 px-4 py-2 text-sm font-black text-sky-800">管理自定义板块</button>
+        <button onClick={onBoards} className="rounded-full bg-sky-100 px-4 py-2 text-sm font-black text-sky-800">管理行动项</button>
       </div>
       <section className="rounded-[2rem] bg-white/90 p-6 shadow-soft">
-        <p className="text-sm font-bold text-slate-500">本周计划</p>
+        <p className="text-sm font-bold text-slate-500">本周推进</p>
         <h1 className="mt-1 text-2xl font-black">{formatChineseDate(weekStart)}—{formatChineseDate(weekEnd)}</h1>
-        <p className="mt-3 rounded-2xl bg-cream p-4 text-sm font-bold leading-6 text-slate-600">先从自定义板块中选择本周要执行的内容，再配置每天时间；所有已选板块每天时间之和必须等于项目每日固定时间。</p>
-        <p className="mt-4 text-sm font-black text-slate-700">自动生成主题：{generatedTheme}</p>
-        <p className="mt-2 text-sm font-bold text-slate-500">项目每日固定时间：{data.project.daily_start_time || '19:30'}—{data.project.daily_end_time || '23:30'}，共 {targetMinutes} 分钟</p>
+        <p className="mt-3 rounded-2xl bg-cream p-4 text-sm font-bold leading-6 text-slate-600">这一周只留 1—3 件最重要的事。预计投入是参考，不会要求每天固定完成同样时长。</p>
+        {currentPhase ? <p className="mt-4 text-sm font-black text-slate-700">当前阶段：{currentPhase.name}</p> : null}
 
         {data.taskBoards.length === 0 ? (
-          <div className="mt-5 rounded-2xl bg-white p-5 text-sm font-bold leading-6 text-slate-600 ring-1 ring-orange-100">还没有自定义板块。请先点击&ldquo;管理自定义板块&rdquo;创建板块。</div>
+          <div className="mt-5 rounded-2xl bg-white p-5 text-sm font-bold leading-6 text-slate-600 ring-1 ring-orange-100">先添加可以在本周落地的一项行动。</div>
         ) : (
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {data.taskBoards.map((board) => {
@@ -1021,7 +964,7 @@ function PlanView({ data, projectId, onBack, onBoards, onSaved }: { data: Projec
               return (
                 <button key={board.id} onClick={() => toggleBoard(board.id)} className={`rounded-2xl p-4 text-left ring-1 transition ${selected ? 'bg-honey text-orange-900 ring-orange-200' : 'bg-cream/70 text-slate-600 ring-orange-100'}`}>
                   <p className="font-black">{board.name}</p>
-                  <p className="mt-1 line-clamp-2 text-xs font-bold opacity-75">{board.kind === 'long_term' ? '长期' : '临时'} · {board.goal || '未设目标'}</p>
+                  <p className="mt-1 line-clamp-2 text-xs font-bold opacity-75">{board.goal || '为本周推进写下一个具体行动'}</p>
                 </button>
               );
             })}
@@ -1033,7 +976,7 @@ function PlanView({ data, projectId, onBack, onBoards, onSaved }: { data: Projec
             {selectedBoards.map((board) => (
               <div key={board.id} className="rounded-2xl bg-white p-4 ring-1 ring-orange-100">
                 <div className="flex items-center justify-between gap-3">
-                  <div><p className="font-black">{board.name}</p><p className="mt-1 text-xs font-bold text-slate-500">每天配置时间</p></div>
+                  <div><p className="font-black">{board.name}</p><p className="mt-1 text-xs font-bold text-slate-500">预计投入（选填）</p></div>
                   <div className="flex items-center gap-2">
                     <input type="number" min={5} step={5} value={minutesByBoard[board.id] || ''} onChange={(e) => setMinutesByBoard({ ...minutesByBoard, [board.id]: Number(e.target.value) })} className="w-24 rounded-xl border border-orange-100 bg-cream px-3 py-2 text-right font-black outline-none" />
                     <span className="text-sm font-bold text-slate-500">分钟</span>
@@ -1044,10 +987,8 @@ function PlanView({ data, projectId, onBack, onBoards, onSaved }: { data: Projec
           </div>
         ) : null}
 
-        <p className={`mt-4 rounded-2xl p-4 text-sm font-bold ${remainingMinutes === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-white text-slate-600'}`}>
-          已选择 {selectedCount} 个板块，每天合计 {total} 分钟；目标合计 {targetMinutes} 分钟，{remainingMinutes === 0 ? '时间已匹配。' : remainingMinutes > 0 ? `还差 ${remainingMinutes} 分钟。` : `已超出 ${Math.abs(remainingMinutes)} 分钟。`}
-        </p>
-        <button onClick={save} disabled={saving || data.taskBoards.length === 0} className="mt-5 w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在保存...' : '保存本周计划'}</button>
+        <p className="mt-4 rounded-2xl bg-white p-4 text-sm font-bold text-slate-600">已选择 {selectedCount} / 3 项{total > 0 ? `，预计投入 ${minutesToText(total)}` : ''}</p>
+        <button onClick={save} disabled={saving || data.taskBoards.length === 0} className="mt-5 w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在保存...' : '确认本周推进'}</button>
       </section>
     </div>
   );
@@ -1066,13 +1007,13 @@ function BoardsView({ boards, projectId, onBack, onSaved }: { boards: TaskBoard[
   });
 
   async function createBoard() {
-    if (!name.trim()) { alert('请填写任务板块名称。'); return; }
+    if (!name.trim()) { alert('请填写行动项名称。'); return; }
     if (kind === 'long_term' && !goal.trim()) { alert('长期任务必须设定目标。'); return; }
     setSaving(true);
     const response = await fetch('/api/task-boards', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project_id: projectId, name, kind, goal }) });
     const payload = await response.json().catch(() => ({}));
     setSaving(false);
-    if (!response.ok) { alert(payload.error || '创建任务板块失败。'); return; }
+    if (!response.ok) { alert(payload.error || '创建行动项失败。'); return; }
     setName(''); setKind('temporary'); setGoal('');
     await onSaved();
   }
@@ -1084,7 +1025,7 @@ function BoardsView({ boards, projectId, onBack, onSaved }: { boards: TaskBoard[
     const response = await fetch('/api/task-boards', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: board.id, kind: draft.kind, goal: draft.goal }) });
     const payload = await response.json().catch(() => ({}));
     setSaving(false);
-    if (!response.ok) { alert(payload.error || '更新任务板块失败。'); return; }
+    if (!response.ok) { alert(payload.error || '更新行动项失败。'); return; }
     await onSaved();
   }
 
@@ -1094,7 +1035,7 @@ function BoardsView({ boards, projectId, onBack, onSaved }: { boards: TaskBoard[
     const response = await fetch('/api/task-boards', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: board.id }) });
     const payload = await response.json().catch(() => ({}));
     setSaving(false);
-    if (!response.ok) { alert(payload.error || '删除任务板块失败。'); return; }
+    if (!response.ok) { alert(payload.error || '删除行动项失败。'); return; }
     await onSaved();
   }
 
@@ -1110,17 +1051,16 @@ function BoardsView({ boards, projectId, onBack, onSaved }: { boards: TaskBoard[
     <div className="space-y-5 pt-4">
       <button onClick={onBack} className="rounded-full bg-white/80 px-4 py-2 text-sm font-bold text-slate-600">返回首页</button>
       <section className="rounded-[2rem] bg-white/90 p-6 shadow-soft">
-        <p className="text-sm font-bold text-slate-500">自定义板块</p>
-        <h1 className="mt-1 text-2xl font-black">创建自己的任务板块</h1>
-        <p className="mt-3 rounded-2xl bg-cream p-4 text-sm font-bold leading-6 text-slate-600">长按已创建板块 2 秒可选择删除。</p>
+        <p className="text-sm font-bold text-slate-500">行动清单</p>
+        <h1 className="mt-1 text-2xl font-black">把下一步写具体</h1>
         <div className="mt-5 grid gap-3">
           {boards.length === 0 ? (
-            <p className="rounded-2xl bg-white p-4 text-sm font-bold text-slate-500 ring-1 ring-orange-100">还没有板块。请先在下方创建。</p>
+            <p className="rounded-2xl bg-white p-4 text-sm font-bold text-slate-500 ring-1 ring-orange-100">还没有行动项。</p>
           ) : boards.map((board) => {
             const draft = editing[board.id] || { kind: board.kind, goal: board.goal || '' };
             return (
               <div key={board.id} onMouseDown={() => startLongPress(board)} onMouseUp={cancelLongPress} onMouseLeave={cancelLongPress} onTouchStart={() => startLongPress(board)} onTouchEnd={cancelLongPress} onTouchCancel={cancelLongPress} className="rounded-2xl bg-cream/70 p-4 select-none">
-                <div className="flex items-start justify-between gap-3"><div><p className="font-black">{board.name}</p><p className="mt-1 text-xs font-bold text-slate-500">长按 2 秒删除</p></div></div>
+                <div className="flex items-start justify-between gap-3"><div><p className="font-black">{board.name}</p></div></div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-[9rem_1fr_auto]">
                   <select value={draft.kind} onChange={(e) => setEditing({ ...editing, [board.id]: { ...draft, kind: e.target.value as TaskKind } })} className="rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm font-bold outline-none"><option value="temporary">临时任务</option><option value="long_term">长期任务</option></select>
                   <input value={draft.goal} onChange={(e) => setEditing({ ...editing, [board.id]: { ...draft, goal: e.target.value } })} placeholder={draft.kind === 'long_term' ? '长期目标（必填）' : '目标（选填）'} className="rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm font-bold outline-none" />
@@ -1132,14 +1072,14 @@ function BoardsView({ boards, projectId, onBack, onSaved }: { boards: TaskBoard[
         </div>
       </section>
       <section className="rounded-[2rem] bg-white/90 p-6 shadow-soft">
-        <h2 className="text-xl font-black">新增自定义板块</h2>
+        <h2 className="text-xl font-black">新增行动项</h2>
         <div className="mt-4 space-y-4">
-          <Field label="板块名称" value={name} onChange={setName} />
+          <Field label="行动项名称" value={name} onChange={setName} />
           <label className="block"><span className="mb-2 block text-sm font-black text-slate-700">任务类型</span>
             <select value={kind} onChange={(e) => setKind(e.target.value as TaskKind)} className="w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100"><option value="temporary">临时任务：可选择是否设定目标</option><option value="long_term">长期任务：必须设定目标</option></select>
           </label>
           <Field label={kind === 'long_term' ? '目标（必填）' : '目标（选填）'} value={goal} onChange={setGoal} />
-          <button onClick={createBoard} disabled={saving} className="w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在保存...' : '创建任务板块'}</button>
+          <button onClick={createBoard} disabled={saving} className="w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在保存...' : '创建行动项'}</button>
         </div>
       </section>
     </div>
@@ -1178,28 +1118,21 @@ function StatsView({ data, onBack }: { data: ProjectData; onBack: () => void }) 
 
 function RecordList({ records }: { records: StudySession[] }) {
   if (records.length === 0) return <p className="text-sm text-slate-500">还没有记录。开始第一段 MyTime。</p>;
-  return <div className="space-y-3">{records.map((item) => <div key={item.id} className="rounded-2xl bg-cream/70 p-4"><p className="text-sm font-black">{item.study_date} · {item.task_board?.name || '任务'} · {minutesToText(item.duration_minutes)}</p><p className="mt-1 text-sm text-slate-600">{item.content}</p></div>)}</div>;
+  const outcomeLabels = { progressed: '已推进', completed: '已完成', blocked: '被卡住' };
+  return <div className="space-y-3">{records.map((item) => <div key={item.id} className="rounded-2xl bg-cream/70 p-4"><div className="flex items-center justify-between gap-3"><p className="min-w-0 text-sm font-black">{item.study_date} · {item.task_board?.name || '本次专注'} · {minutesToText(item.duration_minutes)}</p><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${item.outcome_status === 'completed' ? 'bg-emerald-100 text-emerald-800' : item.outcome_status === 'blocked' ? 'bg-rose-100 text-rose-800' : 'bg-sky-100 text-sky-800'}`}>{outcomeLabels[item.outcome_status || 'progressed']}</span></div><p className="mt-1 text-sm text-slate-600">{item.content}</p></div>)}</div>;
 }
 
-function Field({ label, value, onChange, type = 'text', multiline = false }: { label: string; value: string; onChange: (v: string) => void; type?: string; multiline?: boolean }) {
+function Field({ label, value, onChange, type = 'text', multiline = false, placeholder = '' }: { label: string; value: string; onChange: (v: string) => void; type?: string; multiline?: boolean; placeholder?: string }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-black text-slate-700">{label}</span>
       {multiline ? (
-        <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className="w-full resize-none rounded-2xl border border-orange-100 bg-cream/70 px-4 py-3 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
+        <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={3} className="w-full resize-none rounded-2xl border border-orange-100 bg-cream/70 px-4 py-3 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
       ) : (
-        <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-3 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
+        <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-3 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
       )}
     </label>
   );
-}
-
-function getStudyStatus(now: Date, startTime: string, endTime: string) {
-  const start = timeToToday(startTime, now);
-  const end = timeToToday(endTime, now);
-  if (now < start) return { label: '等待开始', prefix: '距离开始还有', text: minutesToText(Math.ceil((start.getTime() - now.getTime()) / 60000)) };
-  if (now <= end) return { label: '项目时间', prefix: '这段固定时间已经流逝', text: minutesToText(Math.floor((now.getTime() - start.getTime()) / 60000)) };
-  return { label: '今日结束', prefix: '今天的固定时间已结束', text: '明天继续靠近目标' };
 }
 
 function formatSeconds(seconds: number): string {

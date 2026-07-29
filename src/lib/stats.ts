@@ -12,12 +12,18 @@ export function buildStats(sessions: StudySession[], currentPlanItems: WeeklyPla
   const weekMinutes = sum(weekSessions);
   const monthMinutes = sum(sessions.filter((item) => item.study_date.startsWith(monthKey)));
   const totalMinutes = sum(sessions);
-  const weekTargetMinutes = 7 * currentPlanItems.reduce((acc, item) => acc + Number(item.daily_minutes || 0), 0);
+  // V2.1 的周推进以「本周预计投入」为单位，兼容旧版按日填写的计划。
+  const weekTargetMinutes = currentPlanItems.reduce(
+    (acc, item) => acc + Number(item.expected_minutes ?? (Number(item.daily_minutes || 0) * 7)),
+    0,
+  );
 
   const byBoardThisWeek: Record<number, number> = {};
   for (const item of currentPlanItems) byBoardThisWeek[item.task_board_id] = 0;
   for (const session of weekSessions) {
-    byBoardThisWeek[session.task_board_id] = (byBoardThisWeek[session.task_board_id] || 0) + session.duration_minutes;
+    if (session.task_board_id) {
+      byBoardThisWeek[session.task_board_id] = (byBoardThisWeek[session.task_board_id] || 0) + session.duration_minutes;
+    }
   }
 
   return {

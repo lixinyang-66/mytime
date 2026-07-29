@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireSpaceAuthResponse } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { generateAIPlanWithLLM } from '@/lib/ai';
-import type { Difficulty } from '@/types';
+import type { Difficulty, ProjectType } from '@/types';
 
 // GET: 列出当前空间下所有项目
 export async function GET() {
@@ -13,7 +13,7 @@ export async function GET() {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from('projects')
-      .select('id,name,slug,start_date,end_date,total_goal,goal,difficulty,plan_source,daily_start_time,daily_end_time,status')
+      .select('id,name,slug,start_date,end_date,total_goal,goal,difficulty,project_type,project_subtype,plan_source,daily_start_time,daily_end_time,status')
       .eq('space_id', auth.spaceId)
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -35,6 +35,8 @@ export async function POST(request: NextRequest) {
   const endDate = String(body.end_date || '');
   const goal = String(body.goal || '').trim();
   const difficulty = (String(body.difficulty || 'medium') as Difficulty);
+  const projectType = String(body.project_type || 'general') as ProjectType;
+  const projectSubtype = String(body.project_subtype || '').trim() || null;
   const dailyStartTime = String(body.daily_start_time || '19:30');
   const dailyEndTime = String(body.daily_end_time || '23:30');
   const useAIPlan = Boolean(body.use_ai_plan);
@@ -44,6 +46,9 @@ export async function POST(request: NextRequest) {
   }
   if (!['easy', 'medium', 'hard'].includes(difficulty)) {
     return Response.json({ error: '难度选项不正确。' }, { status: 400 });
+  }
+  if (!['research', 'fitness', 'competition', 'exam', 'general'].includes(projectType)) {
+    return Response.json({ error: '项目类型不正确。' }, { status: 400 });
   }
 
   try {
@@ -61,6 +66,8 @@ export async function POST(request: NextRequest) {
         total_goal: goal,
         goal,
         difficulty,
+        project_type: projectType,
+        project_subtype: projectSubtype,
         plan_source: useAIPlan ? 'ai' : 'manual',
         daily_start_time: dailyStartTime,
         daily_end_time: dailyEndTime,
@@ -81,6 +88,8 @@ export async function POST(request: NextRequest) {
         dailyStart: dailyStartTime,
         dailyEnd: dailyEndTime,
         difficulty,
+        projectType,
+        projectSubtype,
       });
 
       if (phases.length > 0) {
