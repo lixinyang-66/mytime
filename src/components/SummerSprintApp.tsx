@@ -532,9 +532,9 @@ function CreationPlanView({ preview, saving, error, onChange, onBack, onConfirm 
 }
 
 function projectStatusMeta(status: ProjectStatus) {
-  if (status === 'completed') return { label: '已完成', className: 'bg-[#E7E9ED] text-[#586271]' };
-  if (status === 'paused') return { label: '暂缓', className: 'bg-[#F2E7C5] text-[#775D2C]' };
-  return { label: '进行中', className: 'bg-[#DCEBDD] text-[#3F654A]' };
+  if (status === 'completed') return { label: '已完成', className: 'bg-[#E7F4EC] text-[#47705A]' };
+  if (status === 'paused') return { label: '暂缓', className: 'bg-[#FFF0C9] text-[#8B6433]' };
+  return { label: '进行中', className: 'bg-[#E1F4E8] text-[#417058]' };
 }
 
 function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject, onDeleteProject }: {
@@ -554,8 +554,17 @@ function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject
   const rangeDays = Math.max(1, Math.round((new Date(`${rangeEnd}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000) + 1);
   const today = toDateKey(new Date());
   const todayPosition = Math.min(100, Math.max(0, ((new Date(`${today}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000 / rangeDays) * 100));
-  const phaseColors = ['bg-[#E2BEA4] text-[#614B3C]', 'bg-[#BBD4DE] text-[#3E5862]', 'bg-[#BBD2C1] text-[#405A48]', 'bg-[#CBBED8] text-[#574762]', 'bg-[#DEBDC2] text-[#68474D]'];
-  const projectPalette = { card: 'bg-[#FBF7F2] ring-1 ring-[#EDE2D7] shadow-[0_8px_18px_rgba(118,95,71,0.05)]', track: 'bg-[#F0ECE6]' };
+  const phaseColors = [
+    'bg-[linear-gradient(135deg,#FFD89A_0%,#FFB983_100%)] text-[#704327]',
+    'bg-[linear-gradient(135deg,#FFE9B4_0%,#FFD59B_100%)] text-[#795638]',
+    'bg-[linear-gradient(135deg,#C8F0D8_0%,#9DDFC0_100%)] text-[#3F6A55]',
+    'bg-[linear-gradient(135deg,#CBEAFF_0%,#A8D8F7_100%)] text-[#3C607A]',
+    'bg-[linear-gradient(135deg,#E6D8FF_0%,#F5C9DA_100%)] text-[#694C6C]',
+  ];
+  const projectPalette = {
+    card: 'bg-[linear-gradient(135deg,#FFFFFF_0%,#FFF8ED_56%,#EEF8FF_100%)] ring-1 ring-[#F3E3D1] shadow-[0_12px_30px_rgba(190,145,91,0.10)]',
+    track: 'bg-[linear-gradient(90deg,#FFF0DB_0%,#FFF8E7_46%,#EAF6FF_100%)]',
+  };
 
   function position(date: string) {
     return Math.min(100, Math.max(0, ((new Date(`${date}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000 / rangeDays) * 100));
@@ -587,23 +596,23 @@ function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject
               <div className="mb-1.5 flex items-center justify-between gap-3 pt-3">
                 <div className="flex min-w-0 items-center gap-2"><span className="truncate text-sm font-black text-slate-700">{project.name}</span><span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-black ${status.className}`}>{status.label}</span></div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <div className="relative h-3 w-20 rounded-full bg-[#E5E5E1] ring-1 ring-[#D2D2CC] sm:w-32 lg:w-72" aria-label={`项目进度 ${progress}%`}>
-                    <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${progress}%`, backgroundImage: 'repeating-linear-gradient(135deg, #30343B 0 5px, #FAF9F5 5px 10px)' }} />
-                    <span className="absolute -top-5 z-20 -translate-x-1/2 text-base leading-none" style={{ left: `${sheepPosition}%` }} aria-hidden="true">🐏</span>
+                  <div className="relative h-3 w-20 rounded-full bg-[#FFF6E8] ring-1 ring-[#F0D8BA] sm:w-32 lg:w-72" aria-label={`项目进度 ${progress}%`}>
+                    <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${progress}%`, backgroundImage: 'repeating-linear-gradient(135deg, #283044 0 5px, #FFF9F0 5px 10px)' }} />
+                    <span className="absolute -top-5 z-20 -translate-x-1/2 text-base leading-none" style={{ left: `${sheepPosition}%` }} aria-hidden="true"><span className="block" style={{ transform: 'scaleX(-1)' }}>🐏</span></span>
                   </div>
                   <span className="text-xs font-bold text-slate-500">{progress}%</span>
                 </div>
               </div>
               <div className={`relative ${projectIndex === 0 ? 'pt-5' : ''}`}>
-                {projectIndex === 0 ? <span className={`absolute top-0 z-20 ${todayLabelTranslate} rounded-full bg-[#4A556A] px-2 py-1 text-[10px] font-black leading-none text-white shadow-sm`} style={{ left: `${todayPosition}%` }}>今天</span> : null}
+                {projectIndex === 0 ? <span className={`absolute top-0 z-20 ${todayLabelTranslate} rounded-full bg-[linear-gradient(135deg,#F3A05C,#E87966)] px-2 py-1 text-[10px] font-black leading-none text-white shadow-sm`} style={{ left: `${todayPosition}%` }}>今天</span> : null}
                 <div className={`relative h-9 overflow-hidden rounded-xl ${palette.track}`}>
-                  <span className="absolute inset-y-0 z-10 w-0.5 bg-ink/45" style={{ left: `${todayPosition}%` }} aria-hidden="true" />
+                  <span className="absolute inset-y-0 z-10 w-0.5 bg-[#E77A48]/60" style={{ left: `${todayPosition}%` }} aria-hidden="true" />
                   {projectPhaseList.length ? projectPhaseList.map((phase, phaseIndex) => {
                     const phaseWidth = width(phase.start_date, phase.end_date);
                     const tone = phase.status === 'completed'
-                      ? 'bg-[#BBD2C1] text-[#405A48]'
+                      ? 'bg-[linear-gradient(135deg,#C8F0D8_0%,#9DDFC0_100%)] text-[#3F6A55]'
                       : phase.status === 'in_progress'
-                        ? 'bg-[#E2BEA4] text-[#614B3C]'
+                        ? 'bg-[linear-gradient(135deg,#FFD89A_0%,#FFB983_100%)] text-[#704327]'
                         : phaseColors[(projectIndex + phaseIndex) % phaseColors.length];
                     return (
                       <span key={phase.id} title={phase.name} className={`absolute top-1 flex h-7 items-center overflow-hidden rounded-md px-1.5 text-[10px] font-black leading-none whitespace-nowrap ${tone} ${phase.status === 'pending' ? 'opacity-75' : ''}`} style={{ left: `${position(phase.start_date)}%`, width: `${phaseWidth}%` }}>
