@@ -142,6 +142,7 @@ export type Stats = {
 export type SpaceBootstrap = {
   space: Space;
   projects: ProjectSummary[];
+  projectPhases: ProjectPhase[];
   moods: SpaceMood[];
 };
 

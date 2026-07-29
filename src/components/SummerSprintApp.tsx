@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
-import type { Space, SpaceMood, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty, ProjectStatus, SessionOutcome } from '@/types';
+import type { Space, SpaceMood, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty, ProjectStatus, ProjectType, SessionOutcome } from '@/types';
 import { formatChineseDate, getWeekEnd, getWeekStart, minutesToText, toDateKey } from '@/lib/date';
 import { getMoodByKey, MOODS } from '@/lib/moods';
 import MoodRainLoader from '@/components/MoodRainLoader';
@@ -21,7 +21,7 @@ type ProjectMode = 'home' | 'gantt' | 'focus' | 'finish' | 'plan' | 'stats' | 'b
 
 type RunningSession = { taskBoardId: number | null; phaseId: number | null; startAt: string; pausedMs: number };
 
-type SpaceData = { space: Space; projects: ProjectSummary[]; moods: SpaceMood[] };
+type SpaceData = { space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[] };
 
 type ProjectData = {
   project: Project;
@@ -32,6 +32,18 @@ type ProjectData = {
   recentSessions: StudySession[];
   recentReviews: Review[];
   stats: { todayMinutes: number; weekMinutes: number; monthMinutes: number; totalMinutes: number; weekTargetMinutes: number; completionRate: number; streakDays: number; byBoardThisWeek: Record<number, number> };
+};
+
+type CreationPhase = Pick<ProjectPhase, 'name' | 'start_date' | 'end_date'>;
+type CreationPreview = {
+  name: string;
+  goal: string;
+  startDate: string;
+  endDate: string;
+  difficulty: Difficulty;
+  initialStatus: Extract<ProjectStatus, 'active' | 'paused'>;
+  classification: { projectType: ProjectType; projectSubtype: string | null };
+  phases: CreationPhase[];
 };
 
 export default function MyTimeApp() {
@@ -66,7 +78,7 @@ export default function MyTimeApp() {
     setSpaceData(payload);
   }
 
-  async function loadProject(projectId: number) {
+  async function loadProject(projectId: number, startImmediately = false) {
     setLoading(true); setError('');
     const response = await fetch(`/api/project-detail?projectId=${projectId}`);
     const payload = await response.json().catch(() => ({}));
@@ -75,7 +87,19 @@ export default function MyTimeApp() {
     setProjectData(payload);
     setSelectedProjectId(projectId);
     setView('project');
-    setMode('home');
+    if (startImmediately) {
+      const today = toDateKey(new Date());
+      const currentPhase = payload.phases.find((phase: ProjectPhase) => phase.status === 'in_progress')
+        || payload.phases.find((phase: ProjectPhase) => phase.start_date <= today && phase.end_date >= today)
+        || payload.phases.find((phase: ProjectPhase) => phase.status === 'pending')
+        || null;
+      const planBoards = (payload.currentPlanItems || []).map((item: WeeklyPlanItem) => item.task_board).filter(Boolean) as TaskBoard[];
+      const focusBoardId = planBoards[0]?.id || payload.taskBoards[0]?.id || null;
+      setSession({ taskBoardId: focusBoardId, phaseId: currentPhase?.id || null, startAt: new Date().toISOString(), pausedMs: 0 });
+      setPaused(false); setPauseStartedAt(null); setContent(''); setOutcomeStatus('progressed'); setMode('focus');
+    } else {
+      setMode('home');
+    }
   }
 
   async function refreshProject() {
@@ -168,8 +192,10 @@ export default function MyTimeApp() {
         <SpaceView
           space={spaceData.space}
           projects={spaceData.projects}
+          projectPhases={spaceData.projectPhases}
           moods={spaceData.moods}
           onOpenProject={(id) => loadProject(id)}
+          onStartProject={(id) => loadProject(id, true)}
           onRefresh={loadSpace}
           onLogout={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }}
         />
@@ -186,7 +212,7 @@ export default function MyTimeApp() {
             now={now} data={projectData}
             onStart={() => startFocus()} onPlan={() => setMode('plan')} onStats={() => setMode('stats')}
             onBoards={() => setMode('boards')} onGantt={() => setMode('gantt')} onReview={() => setMode('review')}
-            onBack={() => { setView('space'); setProjectData(null); setSelectedProjectId(null); }}
+            onBack={() => { setView('space'); setProjectData(null); setSelectedProjectId(null); void loadSpace(); }}
             recordFilter={recordFilter} onRecordFilter={setRecordFilter}
           />
         )}
@@ -229,8 +255,8 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void 
 }
 
 // === SPACE VIEW ===
-function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout }: {
-  space: Space; projects: ProjectSummary[]; moods: SpaceMood[]; onOpenProject: (id: number) => void; onRefresh: () => void; onLogout: () => void;
+function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onStartProject, onRefresh, onLogout }: {
+  space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[]; onOpenProject: (id: number) => void; onStartProject: (id: number) => Promise<void>; onRefresh: () => void; onLogout: () => void;
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
@@ -241,6 +267,7 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
   const [initialStatus, setInitialStatus] = useState<Extract<ProjectStatus, 'active' | 'paused'>>('active');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [creationPreview, setCreationPreview] = useState<CreationPreview | null>(null);
   const [moodRecords, setMoodRecords] = useState(moods);
   const [moodSaving, setMoodSaving] = useState('');
   const [moodError, setMoodError] = useState('');
@@ -262,14 +289,52 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
     const response = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, goal, start_date: startDate, end_date: endDate, difficulty, initial_status: initialStatus }),
+      body: JSON.stringify({ name, goal, start_date: startDate, end_date: endDate, difficulty, initial_status: initialStatus, preview: true }),
     });
     const payload = await response.json().catch(() => ({}));
     setSaving(false);
-    if (!response.ok) { setError(payload.error || '创建项目失败。'); return; }
+    if (!response.ok) { setError(payload.error || '生成项目计划失败。'); return; }
     setShowCreate(false);
+    setCreationPreview({
+      name,
+      goal,
+      startDate,
+      endDate,
+      difficulty,
+      initialStatus,
+      classification: payload.classification,
+      phases: payload.phases || [],
+    });
+  }
+
+  async function confirmCreation() {
+    if (!creationPreview) return;
+    if (!creationPreview.phases.length || creationPreview.phases.some((phase) => !phase.name.trim() || !phase.start_date || !phase.end_date || phase.start_date > phase.end_date)) {
+      setError('请保留至少一个名称和日期完整的阶段。');
+      return;
+    }
+    setSaving(true); setError('');
+    const response = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: creationPreview.name,
+        goal: creationPreview.goal,
+        start_date: creationPreview.startDate,
+        end_date: creationPreview.endDate,
+        difficulty: creationPreview.difficulty,
+        initial_status: creationPreview.initialStatus,
+        auto_project_type: creationPreview.classification.projectType,
+        auto_project_subtype: creationPreview.classification.projectSubtype,
+        phase_overrides: creationPreview.phases,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    setSaving(false);
+    if (!response.ok) { setError(payload.error || '保存项目计划失败。'); return; }
     setName(''); setGoal(''); setEndDate(''); setInitialStatus('active');
-    await onRefresh();
+    setCreationPreview(null);
+    await onStartProject(payload.id);
   }
 
   async function saveMood(moodKey: string) {
@@ -309,6 +374,19 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
     setDeletingProjectId(null);
     if (!response.ok) { setError(payload.error || '删除项目失败。'); return; }
     await onRefresh();
+  }
+
+  if (creationPreview) {
+    return (
+      <CreationPlanView
+        preview={creationPreview}
+        saving={saving}
+        error={error}
+        onChange={(phases) => setCreationPreview({ ...creationPreview, phases })}
+        onBack={() => { setError(''); setCreationPreview(null); setShowCreate(true); }}
+        onConfirm={confirmCreation}
+      />
+    );
   }
 
   return (
@@ -388,6 +466,8 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
         </div>
       ) : null}
 
+      {projects.length > 0 ? <SpaceGanttOverview projects={projects} phases={projectPhases} onOpenProject={onOpenProject} /> : null}
+
       <button onClick={() => setShowCreate(!showCreate)} className="mt-6 w-full rounded-[1.6rem] bg-ink px-6 py-4 text-base font-black text-white shadow-lg transition active:scale-[0.99]">{showCreate ? '取消创建' : '＋ 创建新项目'}</button>
 
       {showCreate ? (
@@ -432,6 +512,104 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
         ))}
       </section> : null}
     </div>
+  );
+}
+
+function CreationPlanView({ preview, saving, error, onChange, onBack, onConfirm }: {
+  preview: CreationPreview; saving: boolean; error: string; onChange: (phases: CreationPhase[]) => void; onBack: () => void; onConfirm: () => void;
+}) {
+  function updatePhase(index: number, field: keyof CreationPhase, value: string) {
+    const phases = preview.phases.map((phase, phaseIndex) => phaseIndex === index ? { ...phase, [field]: value } : phase);
+    onChange(phases);
+  }
+
+  function addPhase() {
+    onChange([...preview.phases, { name: '新增阶段', start_date: preview.startDate, end_date: preview.endDate }]);
+  }
+
+  function removePhase(index: number) {
+    if (preview.phases.length <= 1) return;
+    onChange(preview.phases.filter((_, phaseIndex) => phaseIndex !== index));
+  }
+
+  return (
+    <div className="space-y-5 pt-3">
+      <button type="button" onClick={onBack} className="rounded-full bg-white/80 px-4 py-2 text-sm font-bold text-slate-600">返回修改信息</button>
+      <section className="rounded-[2rem] bg-white/90 p-6 shadow-soft">
+        <p className="text-sm font-bold text-orange-700">AI 项目计划</p>
+        <h1 className="mt-1 text-2xl font-black">{preview.name}</h1>
+        <p className="mt-2 text-sm font-bold leading-6 text-slate-500">{preview.goal}</p>
+        <div className="mt-5 space-y-3">
+          {preview.phases.map((phase, index) => (
+            <div key={`${index}-${phase.name}`} className="rounded-2xl bg-cream/70 p-4 ring-1 ring-orange-100">
+              <div className="flex items-center gap-2">
+                <input value={phase.name} onChange={(event) => updatePhase(index, 'name', event.target.value)} className="min-w-0 flex-1 rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm font-black outline-none" aria-label={`第 ${index + 1} 阶段名称`} />
+                {preview.phases.length > 1 ? <button type="button" onClick={() => removePhase(index)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-lg font-black text-slate-400">×</button> : null}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <input type="date" value={phase.start_date} onChange={(event) => updatePhase(index, 'start_date', event.target.value)} className="rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-bold outline-none" aria-label={`第 ${index + 1} 阶段开始日期`} />
+                <input type="date" value={phase.end_date} onChange={(event) => updatePhase(index, 'end_date', event.target.value)} className="rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-bold outline-none" aria-label={`第 ${index + 1} 阶段结束日期`} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={addPhase} className="mt-4 w-full rounded-2xl bg-cream px-4 py-3 text-sm font-black text-slate-600">＋ 添加阶段</button>
+        {error ? <p className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{error}</p> : null}
+        <button type="button" onClick={onConfirm} disabled={saving} className="mt-5 w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在保存…' : '确认并开始专注'}</button>
+      </section>
+    </div>
+  );
+}
+
+function SpaceGanttOverview({ projects, phases, onOpenProject }: { projects: ProjectSummary[]; phases: ProjectPhase[]; onOpenProject: (id: number) => void }) {
+  const timelineProjects = projects.filter((project) => project.start_date && project.end_date);
+  const starts = timelineProjects.map((project) => project.start_date).sort();
+  const ends = timelineProjects.map((project) => project.end_date).sort();
+  const rangeStart = starts[0];
+  const rangeEnd = ends[ends.length - 1];
+  if (!rangeStart || !rangeEnd) return null;
+
+  const rangeDays = Math.max(1, Math.round((new Date(`${rangeEnd}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000));
+  const today = toDateKey(new Date());
+  const todayPosition = Math.min(100, Math.max(0, ((new Date(`${today}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000 / rangeDays) * 100));
+  const colors = ['bg-orange-400', 'bg-sky-400', 'bg-emerald-400', 'bg-violet-400', 'bg-rose-400'];
+
+  function position(date: string) {
+    return Math.min(100, Math.max(0, ((new Date(`${date}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000 / rangeDays) * 100));
+  }
+
+  function width(start: string, end: string) {
+    return Math.max(2, Math.min(100 - position(start), ((new Date(`${end}T00:00:00`).getTime() - new Date(`${start}T00:00:00`).getTime()) / 86400000 / rangeDays) * 100));
+  }
+
+  return (
+    <section className="mt-6 rounded-[2rem] bg-white/90 p-5 shadow-soft">
+      <div className="flex items-center justify-between gap-3">
+        <div><p className="text-sm font-bold text-slate-500">项目时间线</p><h2 className="text-xl font-black">我的项目甘特图</h2></div>
+        <span className="rounded-full bg-cream px-3 py-1.5 text-xs font-black text-slate-500">{timelineProjects.length} 项目</span>
+      </div>
+      <div className="mt-5 flex justify-between text-[11px] font-bold text-slate-400"><span>{rangeStart}</span><span>{rangeEnd}</span></div>
+      <div className="mt-2 space-y-4">
+        {timelineProjects.map((project, projectIndex) => {
+          const projectPhaseList = phases.filter((phase) => phase.project_id === project.id);
+          const currentPhase = projectPhaseList.find((phase) => phase.status === 'in_progress') || projectPhaseList.find((phase) => phase.status === 'pending');
+          const completed = projectPhaseList.filter((phase) => phase.status === 'completed').length;
+          const progress = projectPhaseList.length ? Math.round(((completed + ((currentPhase?.progress || 0) / 100)) / projectPhaseList.length) * 100) : 0;
+          return (
+            <button key={project.id} type="button" onClick={() => onOpenProject(project.id)} className="w-full text-left">
+              <div className="mb-1.5 flex items-center justify-between gap-3"><span className="truncate text-sm font-black text-slate-700">{project.name}</span><span className="shrink-0 text-xs font-bold text-slate-500">{progress}%</span></div>
+              <div className="relative h-8 overflow-hidden rounded-xl bg-slate-100">
+                <span className="absolute inset-y-0 z-10 w-px bg-ink/40" style={{ left: `${todayPosition}%` }} aria-hidden="true" />
+                {projectPhaseList.length ? projectPhaseList.map((phase, phaseIndex) => (
+                  <span key={phase.id} title={phase.name} className={`absolute top-1 h-6 rounded-lg ${phase.status === 'completed' ? 'bg-emerald-400' : phase.status === 'in_progress' ? 'bg-orange-400' : colors[(projectIndex + phaseIndex) % colors.length]} ${phase.status === 'pending' ? 'opacity-60' : ''}`} style={{ left: `${position(phase.start_date)}%`, width: `${width(phase.start_date, phase.end_date)}%` }} />
+                )) : <span className={`absolute top-1 h-6 rounded-lg ${colors[projectIndex % colors.length]}`} style={{ left: `${position(project.start_date)}%`, width: `${width(project.start_date, project.end_date)}%` }} />}
+              </div>
+              <p className="mt-1.5 truncate text-xs font-bold text-slate-500">{currentPhase?.name || (project.status === 'completed' ? '已完成' : project.status === 'paused' ? '暂缓' : '未设置阶段')}</p>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

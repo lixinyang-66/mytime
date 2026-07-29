@@ -29,6 +29,16 @@ export async function GET() {
       .order('created_at', { ascending: false });
     if (projectsError) throw projectsError;
 
+    const projectIds = (projects || []).map((project) => project.id);
+    const { data: projectPhases, error: projectPhasesError } = projectIds.length
+      ? await supabase
+        .from('project_phases')
+        .select('id,project_id,name,start_date,end_date,sort_order,status,progress')
+        .in('project_id', projectIds)
+        .order('sort_order', { ascending: true })
+      : { data: [], error: null };
+    if (projectPhasesError) throw projectPhasesError;
+
     const { data: moods, error: moodsError } = await supabase
       .from('space_moods')
       .select('id,space_id,mood_date,mood_key,created_at,updated_at')
@@ -37,7 +47,7 @@ export async function GET() {
 
     if (moodsError && !isMissingMoodTable(moodsError)) throw moodsError;
 
-    return Response.json({ space, projects: projects || [], moods: moods || [] });
+    return Response.json({ space, projects: projects || [], projectPhases: projectPhases || [], moods: moods || [] });
   } catch (error) {
     const message = error instanceof Error ? error.message : '读取空间数据失败。';
     return Response.json({ error: message }, { status: 500 });
