@@ -2,10 +2,9 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
-import type { Space, SpaceMood, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty, ProjectType, SessionOutcome } from '@/types';
+import type { Space, SpaceMood, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty, ProjectStatus, SessionOutcome } from '@/types';
 import { formatChineseDate, getWeekEnd, getWeekStart, minutesToText, toDateKey } from '@/lib/date';
 import { getMoodByKey, MOODS } from '@/lib/moods';
-import { getProjectTypeLabel, PROJECT_TYPE_OPTIONS } from '@/lib/knowledge';
 import MoodRainLoader from '@/components/MoodRainLoader';
 
 const boardColors = [
@@ -238,12 +237,8 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
   const [goal, setGoal] = useState('');
   const [startDate, setStartDate] = useState(toDateKey(new Date()));
   const [endDate, setEndDate] = useState('');
-  const [dailyStart, setDailyStart] = useState('19:30');
-  const [dailyEnd, setDailyEnd] = useState('23:30');
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
-  const [projectType, setProjectType] = useState<ProjectType>('research');
-  const [projectSubtype, setProjectSubtype] = useState('');
-  const [useAI, setUseAI] = useState(true);
+  const [initialStatus, setInitialStatus] = useState<Extract<ProjectStatus, 'active' | 'paused'>>('active');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [moodRecords, setMoodRecords] = useState(moods);
@@ -267,13 +262,13 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
     const response = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, goal, start_date: startDate, end_date: endDate, daily_start_time: dailyStart, daily_end_time: dailyEnd, difficulty, project_type: projectType, project_subtype: projectSubtype, use_ai_plan: useAI }),
+      body: JSON.stringify({ name, goal, start_date: startDate, end_date: endDate, difficulty, initial_status: initialStatus }),
     });
     const payload = await response.json().catch(() => ({}));
     setSaving(false);
     if (!response.ok) { setError(payload.error || '创建项目失败。'); return; }
     setShowCreate(false);
-    setName(''); setGoal(''); setEndDate(''); setProjectSubtype('');
+    setName(''); setGoal(''); setEndDate(''); setInitialStatus('active');
     await onRefresh();
   }
 
@@ -397,25 +392,21 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
 
       {showCreate ? (
         <section className="mt-5 rounded-[2rem] bg-white/90 p-6 shadow-soft">
-          <h2 className="text-xl font-black">创建项目</h2>
-          <p className="mt-1 text-sm font-bold text-slate-500">填写基本信息，AI 将根据你的项目自动生成阶段计划</p>
-          {error ? <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{error}</p> : null}
-          <form onSubmit={createProject} className="mt-4 space-y-4">
+          {error ? <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{error}</p> : null}
+          <form onSubmit={createProject} className="space-y-4">
             <Field label="项目名称" value={name} onChange={setName} />
             <Field label="项目目标" value={goal} onChange={setGoal} multiline />
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="mb-2 block text-sm font-black text-slate-700">项目类型</span>
-                <select value={projectType} onChange={(e) => setProjectType(e.target.value as ProjectType)} className="w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100">
-                  {PROJECT_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                </select>
-              </label>
-              <Field label="细分方向（选填）" value={projectSubtype} onChange={setProjectSubtype} placeholder="如：毕业论文、减脂" />
-            </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="开始日期" type="date" value={startDate} onChange={setStartDate} />
               <Field label="截止日期" type="date" value={endDate} onChange={setEndDate} />
             </div>
+            <label className="block">
+              <span className="mb-2 block text-sm font-black text-slate-700">项目初始状态</span>
+              <select value={initialStatus} onChange={(e) => setInitialStatus(e.target.value as Extract<ProjectStatus, 'active' | 'paused'>)} className="w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100">
+                <option value="active">进行中</option>
+                <option value="paused">暂缓</option>
+              </select>
+            </label>
             <label className="block">
               <span className="mb-2 block text-sm font-black text-slate-700">任务难度</span>
               <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)} className="w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100">
@@ -423,13 +414,6 @@ function SpaceView({ space, projects, moods, onOpenProject, onRefresh, onLogout 
                 <option value="medium">中等：4 个阶段</option>
                 <option value="hard">困难：5 个阶段</option>
               </select>
-            </label>
-            <label className="flex items-center gap-3 rounded-2xl bg-sky-50 p-4">
-              <input type="checkbox" checked={useAI} onChange={(e) => setUseAI(e.target.checked)} className="h-5 w-5 rounded" />
-              <div>
-                <p className="text-sm font-black text-sky-800">AI 自动生成项目计划</p>
-                <p className="text-xs font-bold text-sky-600">结合项目类型、目标与截止日期生成阶段路线图</p>
-              </div>
             </label>
             <button type="submit" disabled={saving} className="w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在创建...' : '创建项目'}</button>
           </form>
@@ -568,7 +552,7 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
     <div className="space-y-5">
       <header className="flex items-center justify-between pt-2">
         <div>
-          <p className="text-sm font-bold text-orange-700">MyTime · {getProjectTypeLabel(data.project.project_type)}</p>
+          <p className="text-sm font-bold text-orange-700">MyTime</p>
           <h1 className="text-2xl font-black tracking-tight">{data.project.name}</h1>
         </div>
         <button onClick={onBack} className="rounded-full bg-white/70 px-4 py-2 text-xs font-bold text-slate-500 shadow-sm">返回空间</button>
@@ -580,7 +564,6 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
             <p className="text-sm font-bold text-slate-500">项目目标</p>
             <h2 className="mt-2 text-base font-black leading-7 text-slate-700">{data.project.goal || data.project.total_goal}</h2>
           </div>
-          <span className="shrink-0 rounded-full bg-sky-100 px-3 py-1.5 text-xs font-black text-sky-800">{data.project.project_subtype || getProjectTypeLabel(data.project.project_type)}</span>
         </div>
         <div className="mt-5 rounded-[1.6rem] bg-cream p-5">
           <p className="text-sm font-bold text-slate-500">当前阶段</p>
