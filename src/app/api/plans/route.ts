@@ -4,16 +4,8 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 
 type PlanItemPayload = {
   task_board_id: number;
-  daily_minutes: number;
+  expected_minutes?: number;
 };
-
-function getMinutesBetween(startTime: string, endTime: string): number {
-  const [startHour, startMinute] = startTime.split(':').map(Number);
-  const [endHour, endMinute] = endTime.split(':').map(Number);
-  const start = (startHour || 0) * 60 + (startMinute || 0);
-  const end = (endHour || 0) * 60 + (endMinute || 0);
-  return Math.max(0, end - start);
-}
 
 export async function POST(request: NextRequest) {
   const auth = requireSpaceAuthResponse();
@@ -28,8 +20,8 @@ export async function POST(request: NextRequest) {
 
   const items = Array.isArray(body.items) ? (body.items as PlanItemPayload[]) : [];
   const selectedItems = items
-    .map((item) => ({ task_board_id: Number(item.task_board_id), daily_minutes: Number(item.daily_minutes || 0) }))
-    .filter((item) => item.task_board_id > 0 && item.daily_minutes > 0);
+    .map((item) => ({ task_board_id: Number(item.task_board_id), expected_minutes: Math.max(0, Number(item.expected_minutes || 0)) }))
+    .filter((item) => item.task_board_id > 0);
 
   if (!body.week_start_date || !body.week_end_date) {
     return Response.json({ error: '缺少周计划日期。' }, { status: 400 });
@@ -44,18 +36,12 @@ export async function POST(request: NextRequest) {
     // 验证项目归属当前空间
     const { data: project, error: projectError } = await supabase
       .from('projects')
-      .select('daily_start_time,daily_end_time')
+      .select('id')
       .eq('id', projectId)
       .eq('space_id', auth.spaceId)
       .single();
 
     if (projectError) throw projectError;
-
-    const targetMinutes = getMinutesBetween(project.daily_start_time, project.daily_end_time);
-    const selectedTotalMinutes = selectedItems.reduce((acc, item) => acc + item.daily_minutes, 0);
-    if (selectedTotalMinutes !== targetMinutes) {
-      return Response.json({ error: `所有板块每天时间之和必须等于项目每日固定时间 ${targetMinutes} 分钟。` }, { status: 400 });
-    }
 
     const { data: projectBoards, error: boardsError } = await supabase
       .from('task_boards')
@@ -92,7 +78,8 @@ export async function POST(request: NextRequest) {
       selectedItems.map((item) => ({
         weekly_plan_id: plan.id,
         task_board_id: item.task_board_id,
-        daily_minutes: item.daily_minutes,
+        daily_minutes: 0,
+        expected_minutes: item.expected_minutes || null,
       })),
     );
     if (insertError) throw insertError;

@@ -1,4 +1,5 @@
-import type { ProjectPhase } from '@/types';
+import type { ProjectPhase, ProjectType, SessionOutcome } from '@/types';
+import { buildKnowledgeContext, getProjectTypeLabel } from '@/lib/knowledge';
 
 /**
  * AI Plan Generator
@@ -16,6 +17,8 @@ type PlanInput = {
   dailyStart: string;
   dailyEnd: string;
   difficulty: 'easy' | 'medium' | 'hard';
+  projectType: ProjectType;
+  projectSubtype?: string | null;
 };
 
 type GeneratedPhase = {
@@ -104,7 +107,7 @@ const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
 const DEEPSEEK_MODEL = 'deepseek-v4-pro';
 
 function buildSystemPrompt(): string {
-  return `你是一个专业的项目管理助手，擅长根据项目信息拆解阶段计划。
+  return `你是 MyTime 的个人项目管理助手，擅长根据项目信息拆解阶段计划。
 
 你的任务：根据用户提供的项目信息，生成合理的项目阶段计划。
 
@@ -115,69 +118,51 @@ function buildSystemPrompt(): string {
 4. 所有阶段的日期必须连续覆盖，不能有间隔或重叠
 5. 最后一个阶段的结束日期必须等于项目的截止日期
 
-你必须严格按照 JSON 数组格式返回，不要包含其他任何文字。`;
+你必须严格返回 JSON 对象，不要包含其他任何文字。对象格式为：
+{"phases":[{"name":"阶段名称","start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD","sort_order":1}]}`;
 }
 
 function buildUserPrompt(input: PlanInput): string {
   const totalDays = daysBetween(input.startDate, input.endDate);
   const dailyMinutes = getMinutesBetween(input.dailyStart, input.dailyEnd);
   const difficultyLabel = input.difficulty === 'easy' ? '简单' : input.difficulty === 'hard' ? '困难' : '中等';
+  const projectTypeLabel = getProjectTypeLabel(input.projectType);
+  const knowledgeContext = buildKnowledgeContext(input.projectType);
 
   return `请为以下项目生成阶段计划：
 
 项目名称：${input.name}
 项目目标：${input.goal}
+项目类型：${projectTypeLabel}${input.projectSubtype ? `（${input.projectSubtype}）` : ''}
 开始日期：${input.startDate}
 截止日期：${input.endDate}（共 ${totalDays} 天）
 每天可用时间：${input.dailyStart} - ${input.dailyEnd}（每天 ${dailyMinutes} 分钟）
 任务难度：${difficultyLabel}
 
-请返回 JSON 数组，格式如下：
-[
-  {
-    "name": "阶段名称（具体、可执行）",
-    "start_date": "YYYY-MM-DD",
-    "end_date": "YYYY-MM-DD",
-    "sort_order": 1
-  }
-]
-
 注意：
 - 阶段数量根据难度调整：简单 3 个，中等 4 个，困难 5 个
 - 所有日期必须在 ${input.startDate} 到 ${input.endDate} 之间
 - 最后一个阶段的 end_date 必须是 ${input.endDate}
-- 只返回 JSON 数组，不要任何其他文字`;
+- 严格返回 JSON 对象：{"phases":[{"name":"阶段名称（具体、可执行）","start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD","sort_order":1}]}
+
+可参考的项目知识与方法卡：
+${knowledgeContext}`;
 }
 
 function parseAIResponse(text: string): GeneratedPhase[] | null {
-  try {
-    // 尝试直接解析 JSON
-    const parsed = JSON.parse(text);
-    if (Array.isArray(parsed)) return parsed as GeneratedPhase[];
-  } catch {
-    // 尝试从 markdown 代码块中提取 JSON
-    const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      try {
-        const parsed = JSON.parse(jsonMatch[1].trim());
-        if (Array.isArray(parsed)) return parsed as GeneratedPhase[];
-      } catch {
-        // 继续尝试其他方式
+  const candidates = [text, text.match(/```(?:json)?\s*([\s\S]*?)```/)?.[1], text.match(/\{[\s\S]*\}/)?.[0], text.match(/\[[\s\S]*\]/)?.[0]];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const parsed = JSON.parse(candidate.trim()) as unknown;
+      if (Array.isArray(parsed)) return parsed as GeneratedPhase[];
+      if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { phases?: unknown }).phases)) {
+        return (parsed as { phases: GeneratedPhase[] }).phases;
       }
-    }
-
-    // 尝试提取第一个 [ 到最后一个 ] 之间的内容
-    const bracketMatch = text.match(/\[[\s\S]*\]/);
-    if (bracketMatch) {
-      try {
-        const parsed = JSON.parse(bracketMatch[0]);
-        if (Array.isArray(parsed)) return parsed as GeneratedPhase[];
-      } catch {
-        // 解析失败
-      }
+    } catch {
+      // 继续尝试下一个候选 JSON。
     }
   }
-
   return null;
 }
 
@@ -223,8 +208,9 @@ export async function generateAIPlanWithLLM(input: PlanInput): Promise<Generated
           { role: 'system', content: buildSystemPrompt() },
           { role: 'user', content: buildUserPrompt(input) },
         ],
-        temperature: 0.7,
+        temperature: 0.4,
         max_tokens: 2000,
+        response_format: { type: 'json_object' },
       }),
     });
 
@@ -253,5 +239,130 @@ export async function generateAIPlanWithLLM(input: PlanInput): Promise<Generated
     console.error('DeepSeek API call failed:', error);
     // 任何异常都降级为规则引擎，保证项目创建不会失败
     return generateAIPlan(input);
+  }
+}
+
+export type ReviewSessionInput = {
+  studyDate: string;
+  durationMinutes: number;
+  content: string;
+  outcome: SessionOutcome;
+  phaseName?: string | null;
+};
+
+export type MoodInput = { date: string; label: string };
+
+export type PersonalizedReviewInput = {
+  projectName: string;
+  projectGoal: string;
+  projectType: ProjectType;
+  projectSubtype?: string | null;
+  periodStart: string;
+  periodEnd: string;
+  currentPhase?: string | null;
+  sessions: ReviewSessionInput[];
+  moods: MoodInput[];
+  spaceHistory?: string;
+};
+
+export type PersonalizedReview = {
+  summary: string;
+  insights: string;
+  nextSteps: string;
+};
+
+function buildReviewPrompt(input: PersonalizedReviewInput): string {
+  const sessionLines = input.sessions.length
+    ? input.sessions.map((session) => `${session.studyDate}｜${session.durationMinutes} 分钟｜${session.outcome}｜${session.phaseName || '未关联阶段'}｜${session.content.slice(0, 180)}`).join('\n')
+    : '本周期尚无专注记录。';
+  const moodLines = input.moods.length
+    ? input.moods.map((mood) => `${mood.date}｜${mood.label}`).join('\n')
+    : '本周期未记录状态。';
+
+  return `请为 MyTime 用户生成一份“个人项目周复盘”。
+
+项目：${input.projectName}
+项目目标：${input.projectGoal}
+项目类型：${getProjectTypeLabel(input.projectType)}${input.projectSubtype ? `（${input.projectSubtype}）` : ''}
+复盘周期：${input.periodStart} 至 ${input.periodEnd}
+当前阶段：${input.currentPhase || '未设置'}
+
+专注记录：
+${sessionLines}
+
+每日状态：
+${moodLines}
+
+同一空间的历史投入概览（只用于了解个人基线，不替代本周记录）：
+${input.spaceHistory || '历史记录不足。'}
+
+可参考的方法卡：
+${buildKnowledgeContext(input.projectType)}
+
+要求：
+1. summary 只描述可从记录中确认的事实，避免空泛鼓励；
+2. insights 可以指出“个人数据中的线索”，必须使用“可能”“从记录看”等表达，不能声称状态造成了结果，不能进行心理或医学诊断；
+3. next_steps 给出不超过 3 条可执行建议，优先服务当前阶段；
+4. 若记录不足，明确说明暂不足以判断，并建议先持续记录；
+5. 严格返回 JSON 对象：{"summary":"...","insights":"...","next_steps":"..."}。`;
+}
+
+function parsePersonalizedReview(text: string): PersonalizedReview | null {
+  const candidates = [text, text.match(/```(?:json)?\s*([\s\S]*?)```/)?.[1], text.match(/\{[\s\S]*\}/)?.[0]];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const parsed = JSON.parse(candidate.trim()) as Record<string, unknown>;
+      const summary = String(parsed.summary || '').trim();
+      const insights = String(parsed.insights || '').trim();
+      const nextSteps = String(parsed.next_steps || parsed.nextSteps || '').trim();
+      if (summary && insights && nextSteps) return { summary, insights, nextSteps };
+    } catch {
+      // 继续尝试下一个候选 JSON。
+    }
+  }
+  return null;
+}
+
+function fallbackPersonalizedReview(input: PersonalizedReviewInput): PersonalizedReview {
+  const totalMinutes = input.sessions.reduce((sum, session) => sum + session.durationMinutes, 0);
+  const completedCount = input.sessions.filter((session) => session.outcome === 'completed').length;
+  const blocked = input.sessions.filter((session) => session.outcome === 'blocked');
+  const totalText = input.sessions.length ? `本周期共记录 ${input.sessions.length} 次专注、${totalMinutes} 分钟，其中 ${completedCount} 次标记为已完成。` : '本周期还没有专注记录，暂时无法判断项目推进情况。';
+  const blockedText = blocked.length ? `有 ${blocked.length} 次记录标记为受阻，可在下次复盘时优先说明阻塞原因。` : '目前没有被明确标记为受阻的专注记录。';
+  const step = input.currentPhase ? `围绕“${input.currentPhase}”保留 1 项主行动和不超过 2 项辅助行动。` : '先在项目路线图中确认当前阶段，再保留 1 项本周主行动。';
+  return {
+    summary: totalText,
+    insights: `${blockedText} 每日状态仅用于观察个人记录中的线索，不作为对能力或心理状态的判断。`,
+    nextSteps: `${step}\n每次专注结束后记录实际完成内容，并标记“已推进、已完成或受阻”。\n周末根据真实记录决定保留、压缩或调整下一步。`,
+  };
+}
+
+export async function generatePersonalizedReview(input: PersonalizedReviewInput): Promise<PersonalizedReview> {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) return fallbackPersonalizedReview(input);
+
+  try {
+    const response = await fetch(DEEPSEEK_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: DEEPSEEK_MODEL,
+        messages: [
+          { role: 'system', content: '你是谨慎的个人项目复盘助手。只基于用户提供的记录给出建议，不做诊断，不把相关性当作因果。' },
+          { role: 'user', content: buildReviewPrompt(input) },
+        ],
+        temperature: 0.3,
+        max_tokens: 1600,
+        response_format: { type: 'json_object' },
+      }),
+    });
+    if (!response.ok) return fallbackPersonalizedReview(input);
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    const review = content ? parsePersonalizedReview(content) : null;
+    return review || fallbackPersonalizedReview(input);
+  } catch {
+    return fallbackPersonalizedReview(input);
   }
 }

@@ -83,8 +83,9 @@ export async function GET(request: NextRequest) {
     const currentPlanItems = currentPlan?.weekly_plan_items
       ? currentPlan.weekly_plan_items.filter((item: { task_board?: { is_custom?: boolean } }) => item.task_board?.is_custom)
       : [];
-    const customSessions = (allSessions || []).filter((item: { task_board?: { is_custom?: boolean } }) => item.task_board?.is_custom);
-    const customRecentSessions = (recentSessions || []).filter((item: { task_board?: { is_custom?: boolean } }) => item.task_board?.is_custom);
+    // 专注记录不再强制绑定行动项；保留未绑定的记录，才能用于项目复盘。
+    const customSessions = (allSessions || []).filter((item: { task_board_id?: number | null; task_board?: { is_custom?: boolean } }) => !item.task_board_id || item.task_board?.is_custom);
+    const customRecentSessions = (recentSessions || []).filter((item: { task_board_id?: number | null; task_board?: { is_custom?: boolean } }) => !item.task_board_id || item.task_board?.is_custom);
     const planWithoutItems = currentPlan ? { ...currentPlan, weekly_plan_items: undefined } : null;
 
     return Response.json({
@@ -141,6 +142,8 @@ export async function POST(request: NextRequest) {
       dailyStart: project.daily_start_time || '19:30',
       dailyEnd: project.daily_end_time || '23:30',
       difficulty: project.difficulty as Difficulty,
+      projectType: project.project_type || 'general',
+      projectSubtype: project.project_subtype,
     });
 
     if (phases.length > 0) {
