@@ -1,4 +1,4 @@
-import type { ProjectPhase, ProjectType, SessionOutcome } from '@/types';
+import type { Difficulty, ProjectPhase, ProjectType, SessionOutcome } from '@/types';
 import { buildKnowledgeContext, getProjectTypeLabel } from '@/lib/knowledge';
 
 /**
@@ -16,9 +16,10 @@ type PlanInput = {
   endDate: string;
   dailyStart: string;
   dailyEnd: string;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: Difficulty;
   projectType: ProjectType;
   projectSubtype?: string | null;
+  initialStatusNote?: string;
 };
 
 type GeneratedPhase = {
@@ -50,18 +51,20 @@ function getMinutesBetween(startTime: string, endTime: string): number {
 
 export function generateAIPlan(input: PlanInput): GeneratedPhase[] {
   const totalDays = daysBetween(input.startDate, input.endDate);
-
-  const phaseConfigs = getPhaseConfig(input.difficulty);
+  // 项目周期不足以容纳所有阶段时，优先保证日期连续且不越界。
+  const phaseConfigs = getPhaseConfig(input.projectType, input.difficulty).slice(0, totalDays);
   const phases: GeneratedPhase[] = [];
   let currentDay = 0;
 
   for (let i = 0; i < phaseConfigs.length; i++) {
     const config = phaseConfigs[i];
-    const phaseDays = Math.max(3, Math.round(totalDays * config.ratio));
+    const remainingDays = totalDays - currentDay;
+    const remainingRatio = phaseConfigs.slice(i).reduce((sum, phase) => sum + phase.ratio, 0);
+    const phaseDays = i === phaseConfigs.length - 1
+      ? remainingDays
+      : Math.max(1, Math.round((remainingDays * config.ratio) / remainingRatio));
     const phaseStart = addDays(input.startDate, currentDay);
-    const phaseEnd = i === phaseConfigs.length - 1
-      ? input.endDate
-      : addDays(input.startDate, currentDay + phaseDays - 1);
+    const phaseEnd = addDays(input.startDate, currentDay + phaseDays - 1);
 
     phases.push({
       name: config.name,
@@ -71,34 +74,49 @@ export function generateAIPlan(input: PlanInput): GeneratedPhase[] {
     });
 
     currentDay += phaseDays;
-    if (currentDay >= totalDays) break;
   }
 
   return phases;
 }
 
-function getPhaseConfig(difficulty: 'easy' | 'medium' | 'hard') {
-  const configs = {
-    easy: [
-      { name: '启动与了解', ratio: 0.3 },
-      { name: '核心推进', ratio: 0.4 },
-      { name: '收尾与复盘', ratio: 0.3 },
-    ],
-    medium: [
-      { name: '调研与规划', ratio: 0.15 },
-      { name: '核心执行', ratio: 0.4 },
-      { name: '优化迭代', ratio: 0.25 },
-      { name: '验收与总结', ratio: 0.2 },
-    ],
-    hard: [
-      { name: '需求分析与拆解', ratio: 0.1 },
-      { name: '方案设计与原型', ratio: 0.15 },
-      { name: '核心开发', ratio: 0.35 },
-      { name: '测试与优化', ratio: 0.2 },
-      { name: '收尾与复盘', ratio: 0.2 },
-    ],
-  };
-  return configs[difficulty];
+type PhaseConfig = { name: string; ratio: number };
+
+const phaseNamesByType: Record<ProjectType, Record<Difficulty, string[]>> = {
+  research: {
+    easy: ['明确研究问题与交付物', '研究/写作核心推进', '修改提交与复盘'],
+    medium: ['明确研究问题与资料清单', '文献梳理与研究框架', '研究/实验执行与材料整理', '写作修改与提交'],
+    hard: ['研究问题与任务拆解', '文献梳理与方法设计', '研究/实验执行', '写作打磨与修改', '成果提交与复盘'],
+  },
+  fitness: {
+    easy: ['建立身体基线与目标', '稳定训练与饮食执行', '记录复盘与习惯巩固'],
+    medium: ['建立身体基线与目标', '安排训练与饮食节奏', '持续训练、恢复与数据记录', '依据数据调整并复盘'],
+    hard: ['建立身体基线与目标', '制定训练、饮食与恢复方案', '稳定训练与饮食执行', '依据数据动态调整', '阶段评估与习惯巩固'],
+  },
+  competition: {
+    easy: ['明确赛题与交付要求', '完成作品/材料核心部分', '提交前打磨与复盘'],
+    medium: ['选题与报名准备', '方案设计与分工拆解', '作品开发与材料完善', '提交演练与复盘'],
+    hard: ['赛题分析与资源准备', '方案设计与任务拆解', '作品开发与阶段验证', '材料打磨与答辩演练', '正式提交与复盘'],
+  },
+  exam: {
+    easy: ['诊断基础与明确目标', '核心知识学习与练习', '模拟检查与复盘'],
+    medium: ['诊断基础与制定目标', '核心模块学习', '刷题与错题回顾', '模拟冲刺与复盘'],
+    hard: ['诊断基础与目标拆解', '系统学习核心模块', '专项刷题与错题整理', '模考复盘与薄弱项补强', '冲刺巩固与应试准备'],
+  },
+  general: {
+    easy: ['明确目标与行动边界', '完成核心行动', '成果整理与复盘'],
+    medium: ['明确目标与现状', '制定行动方案', '核心行动与记录', '成果整理与复盘'],
+    hard: ['目标拆解与现状盘点', '制定行动方案与资源准备', '核心行动推进', '检查调整与风险处理', '成果整理与复盘'],
+  },
+};
+
+function getPhaseConfig(projectType: ProjectType, difficulty: Difficulty): PhaseConfig[] {
+  const names = phaseNamesByType[projectType][difficulty];
+  const ratios = names.length === 3
+    ? [0.25, 0.55, 0.2]
+    : names.length === 4
+      ? [0.15, 0.25, 0.4, 0.2]
+      : [0.1, 0.15, 0.4, 0.2, 0.15];
+  return names.map((name, index) => ({ name, ratio: ratios[index] }));
 }
 
 // === DeepSeek V4 Pro 大模型接入 ===
@@ -109,17 +127,19 @@ const DEEPSEEK_MODEL = 'deepseek-v4-pro';
 export type ProjectClassification = {
   projectType: ProjectType;
   projectSubtype: string | null;
+  difficulty: Difficulty;
 };
 
 const projectTypes: ProjectType[] = ['research', 'fitness', 'competition', 'exam', 'general'];
+const difficulties: Difficulty[] = ['easy', 'medium', 'hard'];
 
 function fallbackProjectClassification(name: string, goal: string): ProjectClassification {
   const text = `${name} ${goal}`.toLowerCase();
-  if (/(论文|科研|课题|实验|文献|研究|横向|纵向|毕业设计)/.test(text)) return { projectType: 'research', projectSubtype: null };
-  if (/(健身|减脂|减重|增肌|跑步|运动|训练|体脂)/.test(text)) return { projectType: 'fitness', projectSubtype: null };
-  if (/(比赛|竞赛|挑战杯|互联网\+|创新创业|答辩|参赛)/.test(text)) return { projectType: 'competition', projectSubtype: null };
-  if (/(考试|备考|考研|考公|考证|期中|期末|雅思|托福|四六级)/.test(text)) return { projectType: 'exam', projectSubtype: null };
-  return { projectType: 'general', projectSubtype: null };
+  if (/(论文|科研|课题|实验|文献|研究|横向|纵向|毕业设计)/.test(text)) return { projectType: 'research', projectSubtype: null, difficulty: 'hard' };
+  if (/(健身|减脂|减重|增肌|跑步|运动|训练|体脂)/.test(text)) return { projectType: 'fitness', projectSubtype: null, difficulty: 'medium' };
+  if (/(比赛|竞赛|挑战杯|互联网\+|创新创业|答辩|参赛)/.test(text)) return { projectType: 'competition', projectSubtype: null, difficulty: 'hard' };
+  if (/(考试|备考|考研|考公|考证|期中|期末|雅思|托福|四六级)/.test(text)) return { projectType: 'exam', projectSubtype: null, difficulty: 'medium' };
+  return { projectType: 'general', projectSubtype: null, difficulty: 'medium' };
 }
 
 function parseProjectClassification(text: string): ProjectClassification | null {
@@ -131,7 +151,12 @@ function parseProjectClassification(text: string): ProjectClassification | null 
       const projectType = String(parsed.project_type || parsed.projectType || '');
       if (!projectTypes.includes(projectType as ProjectType)) continue;
       const subtype = String(parsed.project_subtype || parsed.projectSubtype || '').trim();
-      return { projectType: projectType as ProjectType, projectSubtype: subtype ? subtype.slice(0, 40) : null };
+      const difficulty = String(parsed.difficulty || '').trim();
+      return {
+        projectType: projectType as ProjectType,
+        projectSubtype: subtype ? subtype.slice(0, 40) : null,
+        difficulty: difficulties.includes(difficulty as Difficulty) ? difficulty as Difficulty : 'medium',
+      };
     } catch {
       // 尝试下一个可能的 JSON 内容。
     }
@@ -143,7 +168,10 @@ function parseProjectClassification(text: string): ProjectClassification | null 
 export async function classifyProjectWithLLM(input: { name: string; goal: string }): Promise<ProjectClassification> {
   const fallback = fallbackProjectClassification(input.name, input.goal);
   const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) return fallback;
+  if (!apiKey) {
+    console.warn('[ai:classification] DEEPSEEK_API_KEY is not configured; using keyword fallback.');
+    return fallback;
+  }
 
   try {
     const response = await fetch(DEEPSEEK_API_URL, {
@@ -152,18 +180,28 @@ export async function classifyProjectWithLLM(input: { name: string; goal: string
       body: JSON.stringify({
         model: DEEPSEEK_MODEL,
         messages: [
-          { role: 'system', content: '你是个人长期项目分类器。仅根据用户给出的项目名称和目标分类，不要推测敏感信息。' },
-          { role: 'user', content: `项目名称：${input.name}\n项目目标：${input.goal}\n\n请在 research（科研）、fitness（健身）、competition（比赛）、exam（考试）、general（其他长期目标）中选一个最贴切的类型，并给出简短细分方向。严格返回 JSON：{"project_type":"research","project_subtype":"毕业论文"}。若无法细分，project_subtype 为空字符串。` },
+          { role: 'system', content: '你是个人长期项目分类器。仅根据用户给出的项目名称和目标分类，不要推测敏感信息。难度表示项目的拆解复杂度，不表示用户能力。' },
+          { role: 'user', content: `项目名称：${input.name}\n项目目标：${input.goal}\n\n请在 research（科研）、fitness（健身）、competition（比赛）、exam（考试）、general（其他长期目标）中选一个最贴切的类型，给出简短细分方向，并推断计划拆解难度（easy、medium、hard）。严格返回 JSON：{"project_type":"research","project_subtype":"毕业论文","difficulty":"hard"}。若无法细分，project_subtype 为空字符串。` },
         ],
         temperature: 0,
         max_tokens: 180,
         response_format: { type: 'json_object' },
       }),
     });
-    if (!response.ok) return fallback;
+    if (!response.ok) {
+      console.warn(`[ai:classification] DeepSeek returned HTTP ${response.status}; using keyword fallback.`);
+      return fallback;
+    }
     const data = await response.json();
-    return parseProjectClassification(data.choices?.[0]?.message?.content || '') || fallback;
-  } catch {
+    const classification = parseProjectClassification(data.choices?.[0]?.message?.content || '');
+    if (!classification) {
+      console.warn('[ai:classification] DeepSeek response could not be parsed; using keyword fallback.');
+      return fallback;
+    }
+    console.info(`[ai:classification] DeepSeek classified project as ${classification.projectType}.`);
+    return classification;
+  } catch (error) {
+    console.error('[ai:classification] DeepSeek request failed; using keyword fallback.', error instanceof Error ? error.message : error);
     return fallback;
   }
 }
@@ -179,6 +217,7 @@ function buildSystemPrompt(): string {
 3. 阶段之间要有逻辑递进关系
 4. 所有阶段的日期必须连续覆盖，不能有间隔或重叠
 5. 最后一个阶段的结束日期必须等于项目的截止日期
+6. 必须遵循项目类型，不得套用其他领域的模板。尤其当项目类型为 fitness 时，阶段必须体现训练、饮食、恢复或数据记录，严禁出现论文、文献、调研、实验、写作等科研阶段。
 
 你必须严格返回 JSON 对象，不要包含其他任何文字。对象格式为：
 {"phases":[{"name":"阶段名称","start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD","sort_order":1}]}`;
@@ -190,12 +229,22 @@ function buildUserPrompt(input: PlanInput): string {
   const difficultyLabel = input.difficulty === 'easy' ? '简单' : input.difficulty === 'hard' ? '困难' : '中等';
   const projectTypeLabel = getProjectTypeLabel(input.projectType);
   const knowledgeContext = buildKnowledgeContext(input.projectType);
+  const domainRequirement = input.projectType === 'fitness'
+    ? '这是健身项目。阶段必须围绕身体基线、训练、饮食、恢复和记录展开；不得使用科研或论文类阶段名称。'
+    : input.projectType === 'research'
+      ? '这是科研项目。阶段应围绕研究问题、文献/方法、研究或实验、写作修改与交付展开。'
+      : input.projectType === 'competition'
+        ? '这是比赛项目。阶段应围绕赛题、方案、作品/材料、演练和提交展开。'
+        : input.projectType === 'exam'
+          ? '这是考试项目。阶段应围绕诊断、学习、练习/错题、模考与冲刺展开。'
+          : '阶段应直接服务于项目目标，避免使用其他领域的术语。';
 
   return `请为以下项目生成阶段计划：
 
 项目名称：${input.name}
 项目目标：${input.goal}
 项目类型：${projectTypeLabel}${input.projectSubtype ? `（${input.projectSubtype}）` : ''}
+项目当前进展：${input.initialStatusNote?.trim() || '未提供，请从项目起点安排'}
 开始日期：${input.startDate}
 截止日期：${input.endDate}（共 ${totalDays} 天）
 每天可用时间：${input.dailyStart} - ${input.dailyEnd}（每天 ${dailyMinutes} 分钟）
@@ -205,6 +254,8 @@ function buildUserPrompt(input: PlanInput): string {
 - 阶段数量根据难度调整：简单 3 个，中等 4 个，困难 5 个
 - 所有日期必须在 ${input.startDate} 到 ${input.endDate} 之间
 - 最后一个阶段的 end_date 必须是 ${input.endDate}
+- 领域约束：${domainRequirement}
+- 如已提供项目当前进展，请避免重复安排其中已经完成的工作；将阶段从当前状态起合理衔接。
 - 严格返回 JSON 对象：{"phases":[{"name":"阶段名称（具体、可执行）","start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD","sort_order":1}]}
 
 可参考的项目知识与方法卡：
@@ -231,11 +282,14 @@ function parseAIResponse(text: string): GeneratedPhase[] | null {
 function validatePhases(phases: GeneratedPhase[], input: PlanInput): boolean {
   if (!phases || phases.length === 0) return false;
 
-  for (const phase of phases) {
+  for (let index = 0; index < phases.length; index++) {
+    const phase = phases[index];
     if (!phase.name || !phase.start_date || !phase.end_date) return false;
     if (phase.start_date < input.startDate) return false;
     if (phase.end_date > input.endDate) return false;
     if (phase.start_date > phase.end_date) return false;
+    const expectedStart = index === 0 ? input.startDate : addDays(phases[index - 1].end_date, 1);
+    if (phase.start_date !== expectedStart) return false;
   }
 
   // 最后一个阶段的结束日期应该等于项目结束日期
@@ -249,12 +303,15 @@ function validatePhases(phases: GeneratedPhase[], input: PlanInput): boolean {
  * 调用 DeepSeek V4 Pro 生成定制化项目计划
  * 如果 API 调用失败或返回数据不合法，自动降级为规则引擎
  */
-export async function generateAIPlanWithLLM(input: PlanInput): Promise<GeneratedPhase[]> {
+export type PlanGenerationSource = 'deepseek' | 'fallback';
+export type GeneratedPlanResult = { phases: GeneratedPhase[]; planSource: PlanGenerationSource };
+
+export async function generateAIPlanWithDiagnostics(input: PlanInput): Promise<GeneratedPlanResult> {
   const apiKey = process.env.DEEPSEEK_API_KEY;
 
   if (!apiKey) {
-    // 没有配置 API Key，降级为规则引擎
-    return generateAIPlan(input);
+    console.warn('[ai:plan] DEEPSEEK_API_KEY is not configured; using domain fallback.');
+    return { phases: generateAIPlan(input), planSource: 'fallback' };
   }
 
   try {
@@ -277,31 +334,37 @@ export async function generateAIPlanWithLLM(input: PlanInput): Promise<Generated
     });
 
     if (!response.ok) {
-      console.error(`DeepSeek API error: ${response.status} ${response.statusText}`);
-      return generateAIPlan(input);
+      console.warn(`[ai:plan] DeepSeek returned HTTP ${response.status}; using domain fallback.`);
+      return { phases: generateAIPlan(input), planSource: 'fallback' };
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
 
     if (!content) {
-      console.error('DeepSeek API returned empty content');
-      return generateAIPlan(input);
+      console.warn('[ai:plan] DeepSeek returned empty content; using domain fallback.');
+      return { phases: generateAIPlan(input), planSource: 'fallback' };
     }
 
     const phases = parseAIResponse(content);
 
     if (!phases || !validatePhases(phases, input)) {
-      console.error('DeepSeek returned invalid phase data, falling back to rule engine');
-      return generateAIPlan(input);
+      console.warn('[ai:plan] DeepSeek returned invalid phase data; using domain fallback.');
+      return { phases: generateAIPlan(input), planSource: 'fallback' };
     }
 
-    return phases;
+    console.info('[ai:plan] DeepSeek generated a project plan successfully.');
+    return { phases, planSource: 'deepseek' };
   } catch (error) {
-    console.error('DeepSeek API call failed:', error);
+    console.error('[ai:plan] DeepSeek request failed; using domain fallback.', error instanceof Error ? error.message : error);
     // 任何异常都降级为规则引擎，保证项目创建不会失败
-    return generateAIPlan(input);
+    return { phases: generateAIPlan(input), planSource: 'fallback' };
   }
+}
+
+// 保持已有调用方兼容；需要追踪来源时使用 generateAIPlanWithDiagnostics。
+export async function generateAIPlanWithLLM(input: PlanInput): Promise<GeneratedPhase[]> {
+  return (await generateAIPlanWithDiagnostics(input)).phases;
 }
 
 export type ReviewSessionInput = {

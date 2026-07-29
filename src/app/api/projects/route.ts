@@ -1,10 +1,19 @@
 import { NextRequest } from 'next/server';
 import { requireSpaceAuthResponse } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { classifyProjectWithLLM, generateAIPlanWithLLM } from '@/lib/ai';
+import { classifyProjectWithLLM, generateAIPlanWithDiagnostics } from '@/lib/ai';
 import type { Difficulty, ProjectStatus, ProjectType } from '@/types';
 
 type PhaseOverride = { name: string; start_date: string; end_date: string };
+const projectTypes: ProjectType[] = ['research', 'fitness', 'competition', 'exam', 'general'];
+const difficulties: Difficulty[] = ['easy', 'medium', 'hard'];
+
+function normalizeProjectStatus(initialStatusNote: string): ProjectStatus {
+  const note = initialStatusNote.replace(/[\s，,。；;、]/g, '');
+  if (/^(已完成|完成|已结项|项目结束)$/.test(note) || /(项目已完成|项目完成|全部完成|项目已结项)/.test(note)) return 'completed';
+  if (/(暂缓|暂停|搁置|未开始|等待|延后)/.test(note)) return 'paused';
+  return 'active';
+}
 
 function normalizePhaseOverrides(value: unknown): PhaseOverride[] | null {
   if (!Array.isArray(value)) return null;
@@ -29,7 +38,7 @@ export async function GET() {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from('projects')
-      .select('id,name,slug,start_date,end_date,total_goal,goal,difficulty,project_type,project_subtype,plan_source,daily_start_time,daily_end_time,status')
+      .select('id,name,slug,start_date,end_date,total_goal,goal,difficulty,project_type,project_subtype,plan_source,daily_start_time,daily_end_time,status,initial_status_note')
       .eq('space_id', auth.spaceId)
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -50,20 +59,14 @@ export async function POST(request: NextRequest) {
   const startDate = String(body.start_date || '');
   const endDate = String(body.end_date || '');
   const goal = String(body.goal || '').trim();
-  const difficulty = (String(body.difficulty || 'medium') as Difficulty);
   const dailyStartTime = String(body.daily_start_time || '19:30');
   const dailyEndTime = String(body.daily_end_time || '23:30');
-  const initialStatus = String(body.initial_status || 'active') as ProjectStatus;
+  const initialStatusNote = String(body.initial_status_note || '').trim().slice(0, 240);
+  const initialStatus = normalizeProjectStatus(initialStatusNote);
   const isPreview = Boolean(body.preview);
 
   if (!name || !startDate || !endDate || !goal) {
     return Response.json({ error: '请填写项目名称、目标、开始和截止日期。' }, { status: 400 });
-  }
-  if (!['easy', 'medium', 'hard'].includes(difficulty)) {
-    return Response.json({ error: '难度选项不正确。' }, { status: 400 });
-  }
-  if (!['active', 'paused'].includes(initialStatus)) {
-    return Response.json({ error: '项目初始状态不正确。' }, { status: 400 });
   }
   if (startDate > endDate) {
     return Response.json({ error: '截止日期不能早于开始日期。' }, { status: 400 });
@@ -73,29 +76,36 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabaseAdmin();
     const suppliedType = String(body.auto_project_type || '');
     const suppliedSubtype = String(body.auto_project_subtype || '').trim() || null;
-    const classification = ['research', 'fitness', 'competition', 'exam', 'general'].includes(suppliedType)
-      ? { projectType: suppliedType as ProjectType, projectSubtype: suppliedSubtype }
+    const suppliedDifficulty = String(body.auto_difficulty || '');
+    const classification = projectTypes.includes(suppliedType as ProjectType)
+      ? {
+        projectType: suppliedType as ProjectType,
+        projectSubtype: suppliedSubtype,
+        difficulty: difficulties.includes(suppliedDifficulty as Difficulty) ? suppliedDifficulty as Difficulty : 'medium',
+      }
       : await classifyProjectWithLLM({ name, goal });
     const hasOverrides = Object.prototype.hasOwnProperty.call(body, 'phase_overrides');
     const phaseOverrides = hasOverrides ? normalizePhaseOverrides(body.phase_overrides) : null;
     if (hasOverrides && !phaseOverrides) {
       return Response.json({ error: '请至少保留一个名称和日期完整的项目阶段。' }, { status: 400 });
     }
-    const phases = phaseOverrides || await generateAIPlanWithLLM({
+    const generatedPlan = phaseOverrides ? null : await generateAIPlanWithDiagnostics({
       name,
       goal,
       startDate,
       endDate,
       dailyStart: dailyStartTime,
       dailyEnd: dailyEndTime,
-      difficulty,
+      difficulty: classification.difficulty,
       projectType: classification.projectType,
       projectSubtype: classification.projectSubtype,
+      initialStatusNote,
     });
+    const phases = phaseOverrides || generatedPlan!.phases;
 
     // 预览不写入数据库，用户可以先调整 AI 计划。
     if (isPreview) {
-      return Response.json({ classification, phases });
+      return Response.json({ classification, phases, planSource: generatedPlan?.planSource || 'user_adjusted' });
     }
 
     const slug = `${name.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '') || 'project'}-${Date.now()}`;
@@ -110,13 +120,14 @@ export async function POST(request: NextRequest) {
         end_date: endDate,
         total_goal: goal,
         goal,
-        difficulty,
+        difficulty: classification.difficulty,
         project_type: classification.projectType,
         project_subtype: classification.projectSubtype,
         plan_source: 'ai',
         daily_start_time: dailyStartTime,
         daily_end_time: dailyEndTime,
         status: initialStatus,
+        initial_status_note: initialStatusNote || null,
       })
       .select('*')
       .single();

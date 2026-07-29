@@ -40,6 +40,7 @@ export type Project = {
   daily_start_time: string;
   daily_end_time: string;
   status: ProjectStatus;
+  initial_status_note?: string | null;
   // Legacy fields (kept for backward compat during migration)
   password_hash?: string;
   study_start_time?: string;
@@ -48,7 +49,7 @@ export type Project = {
   updated_at?: string;
 };
 
-export type ProjectSummary = Pick<Project, 'id' | 'name' | 'slug' | 'start_date' | 'end_date' | 'status' | 'difficulty' | 'project_type' | 'project_subtype'>;
+export type ProjectSummary = Pick<Project, 'id' | 'name' | 'slug' | 'start_date' | 'end_date' | 'status' | 'difficulty' | 'project_type' | 'project_subtype' | 'initial_status_note'>;
 
 // === V2.0: Project Phases (Gantt chart) ===
 export type ProjectPhase = {
