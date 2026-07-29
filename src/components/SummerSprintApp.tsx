@@ -78,7 +78,7 @@ export default function MyTimeApp() {
     setSpaceData(payload);
   }
 
-  async function loadProject(projectId: number, startImmediately = false) {
+  async function loadProject(projectId: number) {
     setLoading(true); setError('');
     const response = await fetch(`/api/project-detail?projectId=${projectId}`);
     const payload = await response.json().catch(() => ({}));
@@ -87,19 +87,7 @@ export default function MyTimeApp() {
     setProjectData(payload);
     setSelectedProjectId(projectId);
     setView('project');
-    if (startImmediately) {
-      const today = toDateKey(new Date());
-      const currentPhase = payload.phases.find((phase: ProjectPhase) => phase.status === 'in_progress')
-        || payload.phases.find((phase: ProjectPhase) => phase.start_date <= today && phase.end_date >= today)
-        || payload.phases.find((phase: ProjectPhase) => phase.status === 'pending')
-        || null;
-      const planBoards = (payload.currentPlanItems || []).map((item: WeeklyPlanItem) => item.task_board).filter(Boolean) as TaskBoard[];
-      const focusBoardId = planBoards[0]?.id || payload.taskBoards[0]?.id || null;
-      setSession({ taskBoardId: focusBoardId, phaseId: currentPhase?.id || null, startAt: new Date().toISOString(), pausedMs: 0 });
-      setPaused(false); setPauseStartedAt(null); setContent(''); setOutcomeStatus('progressed'); setMode('focus');
-    } else {
-      setMode('home');
-    }
+    setMode('home');
   }
 
   async function refreshProject() {
@@ -195,7 +183,6 @@ export default function MyTimeApp() {
           projectPhases={spaceData.projectPhases}
           moods={spaceData.moods}
           onOpenProject={(id) => loadProject(id)}
-          onStartProject={(id) => loadProject(id, true)}
           onRefresh={loadSpace}
           onLogout={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }}
         />
@@ -255,8 +242,8 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void 
 }
 
 // === SPACE VIEW ===
-function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onStartProject, onRefresh, onLogout }: {
-  space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[]; onOpenProject: (id: number) => void; onStartProject: (id: number) => Promise<void>; onRefresh: () => void; onLogout: () => void;
+function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onRefresh, onLogout }: {
+  space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[]; onOpenProject: (id: number) => Promise<void>; onRefresh: () => void; onLogout: () => void;
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
@@ -334,7 +321,7 @@ function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onSta
     if (!response.ok) { setError(payload.error || '保存项目计划失败。'); return; }
     setName(''); setGoal(''); setEndDate(''); setInitialStatus('active');
     setCreationPreview(null);
-    await onStartProject(payload.id);
+    await onOpenProject(payload.id);
   }
 
   async function saveMood(moodKey: string) {
@@ -555,13 +542,13 @@ function CreationPlanView({ preview, saving, error, onChange, onBack, onConfirm 
         </div>
         <button type="button" onClick={addPhase} className="mt-4 w-full rounded-2xl bg-cream px-4 py-3 text-sm font-black text-slate-600">＋ 添加阶段</button>
         {error ? <p className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{error}</p> : null}
-        <button type="button" onClick={onConfirm} disabled={saving} className="mt-5 w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在保存…' : '确认并开始专注'}</button>
+        <button type="button" onClick={onConfirm} disabled={saving} className="mt-5 w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在保存…' : '确认项目计划'}</button>
       </section>
     </div>
   );
 }
 
-function SpaceGanttOverview({ projects, phases, onOpenProject }: { projects: ProjectSummary[]; phases: ProjectPhase[]; onOpenProject: (id: number) => void }) {
+function SpaceGanttOverview({ projects, phases, onOpenProject }: { projects: ProjectSummary[]; phases: ProjectPhase[]; onOpenProject: (id: number) => Promise<void> }) {
   const timelineProjects = projects.filter((project) => project.start_date && project.end_date);
   const starts = timelineProjects.map((project) => project.start_date).sort();
   const ends = timelineProjects.map((project) => project.end_date).sort();
