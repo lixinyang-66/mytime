@@ -198,6 +198,7 @@ export async function classifyProjectWithLLM(input: { name: string; goal: string
       console.warn('[ai:classification] DeepSeek response could not be parsed; using keyword fallback.');
       return fallback;
     }
+    console.info(`[ai:classification] DeepSeek classified project as ${classification.projectType}.`);
     return classification;
   } catch (error) {
     console.error('[ai:classification] DeepSeek request failed; using keyword fallback.', error instanceof Error ? error.message : error);
@@ -352,6 +353,7 @@ export async function generateAIPlanWithDiagnostics(input: PlanInput): Promise<G
       return { phases: generateAIPlan(input), planSource: 'fallback' };
     }
 
+    console.info('[ai:plan] DeepSeek generated a project plan successfully.');
     return { phases, planSource: 'deepseek' };
   } catch (error) {
     console.error('[ai:plan] DeepSeek request failed; using domain fallback.', error instanceof Error ? error.message : error);
