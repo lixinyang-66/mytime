@@ -2,7 +2,23 @@ import { NextRequest } from 'next/server';
 import { requireSpaceAuthResponse } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { classifyProjectWithLLM, generateAIPlanWithLLM } from '@/lib/ai';
-import type { Difficulty, ProjectStatus } from '@/types';
+import type { Difficulty, ProjectStatus, ProjectType } from '@/types';
+
+type PhaseOverride = { name: string; start_date: string; end_date: string };
+
+function normalizePhaseOverrides(value: unknown): PhaseOverride[] | null {
+  if (!Array.isArray(value)) return null;
+  const phases = value.map((item) => {
+    const phase = item as Record<string, unknown>;
+    return {
+      name: String(phase.name || '').trim(),
+      start_date: String(phase.start_date || ''),
+      end_date: String(phase.end_date || ''),
+    };
+  });
+  if (!phases.length || phases.some((phase) => !phase.name || !phase.start_date || !phase.end_date || phase.start_date > phase.end_date)) return null;
+  return phases;
+}
 
 // GET: 列出当前空间下所有项目
 export async function GET() {
@@ -24,7 +40,7 @@ export async function GET() {
   }
 }
 
-// POST: 在当前空间下创建项目
+// POST: 先预览 AI 计划，用户确认后才真正创建项目。
 export async function POST(request: NextRequest) {
   const auth = requireSpaceAuthResponse();
   if (auth instanceof Response) return auth;
@@ -38,6 +54,7 @@ export async function POST(request: NextRequest) {
   const dailyStartTime = String(body.daily_start_time || '19:30');
   const dailyEndTime = String(body.daily_end_time || '23:30');
   const initialStatus = String(body.initial_status || 'active') as ProjectStatus;
+  const isPreview = Boolean(body.preview);
 
   if (!name || !startDate || !endDate || !goal) {
     return Response.json({ error: '请填写项目名称、目标、开始和截止日期。' }, { status: 400 });
@@ -48,12 +65,40 @@ export async function POST(request: NextRequest) {
   if (!['active', 'paused'].includes(initialStatus)) {
     return Response.json({ error: '项目初始状态不正确。' }, { status: 400 });
   }
+  if (startDate > endDate) {
+    return Response.json({ error: '截止日期不能早于开始日期。' }, { status: 400 });
+  }
 
   try {
     const supabase = getSupabaseAdmin();
+    const suppliedType = String(body.auto_project_type || '');
+    const suppliedSubtype = String(body.auto_project_subtype || '').trim() || null;
+    const classification = ['research', 'fitness', 'competition', 'exam', 'general'].includes(suppliedType)
+      ? { projectType: suppliedType as ProjectType, projectSubtype: suppliedSubtype }
+      : await classifyProjectWithLLM({ name, goal });
+    const hasOverrides = Object.prototype.hasOwnProperty.call(body, 'phase_overrides');
+    const phaseOverrides = hasOverrides ? normalizePhaseOverrides(body.phase_overrides) : null;
+    if (hasOverrides && !phaseOverrides) {
+      return Response.json({ error: '请至少保留一个名称和日期完整的项目阶段。' }, { status: 400 });
+    }
+    const phases = phaseOverrides || await generateAIPlanWithLLM({
+      name,
+      goal,
+      startDate,
+      endDate,
+      dailyStart: dailyStartTime,
+      dailyEnd: dailyEndTime,
+      difficulty,
+      projectType: classification.projectType,
+      projectSubtype: classification.projectSubtype,
+    });
+
+    // 预览不写入数据库，用户可以先调整 AI 计划。
+    if (isPreview) {
+      return Response.json({ classification, phases });
+    }
+
     const slug = `${name.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '') || 'project'}-${Date.now()}`;
-    // 项目分类由 AI 基于名称与目标自动完成；接口不可用时有关键词降级方案。
-    const classification = await classifyProjectWithLLM({ name, goal });
 
     const { data: project, error: projectError } = await supabase
       .from('projects')
@@ -78,44 +123,29 @@ export async function POST(request: NextRequest) {
 
     if (projectError) throw projectError;
 
-    // 项目创建后始终生成一份可修改的阶段路线图。
-    {
-      const phases = await generateAIPlanWithLLM({
-        name,
-        goal,
-        startDate,
-        endDate,
-        dailyStart: dailyStartTime,
-        dailyEnd: dailyEndTime,
-        difficulty,
-        projectType: classification.projectType,
-        projectSubtype: classification.projectSubtype,
-      });
-
-      if (phases.length > 0) {
-        const { error: phaseError } = await supabase.from('project_phases').insert(
-          phases.map((p) => ({
-            project_id: project.id,
-            name: p.name,
-            start_date: p.start_date,
-            end_date: p.end_date,
-            sort_order: p.sort_order,
-            status: 'pending',
-            progress: 0,
-          })),
-        );
-        if (phaseError) throw phaseError;
-      }
+    if (phases.length > 0) {
+      const { error: phaseError } = await supabase.from('project_phases').insert(
+        phases.map((phase, index) => ({
+          project_id: project.id,
+          name: phase.name,
+          start_date: phase.start_date,
+          end_date: phase.end_date,
+          sort_order: index + 1,
+          status: 'pending',
+          progress: 0,
+        })),
+      );
+      if (phaseError) throw phaseError;
     }
 
     // 查询生成的阶段一起返回
-    const { data: phases } = await supabase
+    const { data: createdPhases } = await supabase
       .from('project_phases')
       .select('*')
       .eq('project_id', project.id)
       .order('sort_order', { ascending: true });
 
-    return Response.json({ ...project, phases: phases || [] });
+    return Response.json({ ...project, phases: createdPhases || [] });
   } catch (error) {
     const message = error instanceof Error ? error.message : '创建项目失败。';
     return Response.json({ error: message }, { status: 500 });
