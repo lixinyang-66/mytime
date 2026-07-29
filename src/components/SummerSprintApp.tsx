@@ -554,7 +554,14 @@ function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject
   const rangeDays = Math.max(1, Math.round((new Date(`${rangeEnd}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000));
   const today = toDateKey(new Date());
   const todayPosition = Math.min(100, Math.max(0, ((new Date(`${today}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000 / rangeDays) * 100));
-  const colors = ['bg-orange-400', 'bg-sky-400', 'bg-emerald-400', 'bg-violet-400', 'bg-rose-400'];
+  const phaseColors = ['bg-orange-300 text-orange-950', 'bg-sky-300 text-sky-950', 'bg-emerald-300 text-emerald-950', 'bg-violet-300 text-violet-950', 'bg-rose-300 text-rose-950'];
+  const projectPalettes = [
+    { card: 'bg-[#FFF1E6] ring-1 ring-orange-100', track: 'bg-[#FFE5CD]' },
+    { card: 'bg-[#EDF7FF] ring-1 ring-sky-100', track: 'bg-[#DDEFFC]' },
+    { card: 'bg-[#F3F0FF] ring-1 ring-violet-100', track: 'bg-[#E7E1FF]' },
+    { card: 'bg-[#EDFAF3] ring-1 ring-emerald-100', track: 'bg-[#DDF4E8]' },
+    { card: 'bg-[#FFF9DF] ring-1 ring-amber-100', track: 'bg-[#FFF0B8]' },
+  ];
 
   function position(date: string) {
     return Math.min(100, Math.max(0, ((new Date(`${date}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000 / rangeDays) * 100));
@@ -570,27 +577,39 @@ function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject
         <h2 className="text-xl font-black">我的项目</h2>
         <span className="rounded-full bg-cream px-3 py-1.5 text-xs font-black text-slate-500">{timelineProjects.length} 项目</span>
       </div>
-      <div className="mt-5 flex justify-between text-[11px] font-bold text-slate-400"><span>{rangeStart}</span><span>{rangeEnd}</span></div>
-      <div className="mt-2 space-y-4">
+      <div className="mt-5 space-y-4">
         {timelineProjects.map((project, projectIndex) => {
           const projectPhaseList = phases.filter((phase) => phase.project_id === project.id);
           const currentPhase = projectPhaseList.find((phase) => phase.status === 'in_progress') || projectPhaseList.find((phase) => phase.status === 'pending');
           const completed = projectPhaseList.filter((phase) => phase.status === 'completed').length;
           const progress = projectPhaseList.length ? Math.round(((completed + ((currentPhase?.progress || 0) / 100)) / projectPhaseList.length) * 100) : 0;
           const status = projectStatusMeta(project.status);
+          const palette = projectPalettes[projectIndex % projectPalettes.length];
           return (
-            <SwipeGanttProjectRow key={project.id} deleting={deletingProjectId === project.id} onOpen={() => onOpenProject(project.id)} onDelete={() => onDeleteProject(project)}>
+            <SwipeGanttProjectRow key={project.id} panelClassName={palette.card} deleting={deletingProjectId === project.id} onOpen={() => onOpenProject(project.id)} onDelete={() => onDeleteProject(project)}>
               <div className="mb-1.5 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2"><span className="truncate text-sm font-black text-slate-700">{project.name}</span><span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-black ${status.className}`}>{status.label}</span></div>
                 <span className="shrink-0 text-xs font-bold text-slate-500">{progress}%</span>
               </div>
-              <div className="relative h-8 overflow-hidden rounded-xl bg-slate-100">
-                <span className="absolute inset-y-0 z-10 w-px bg-ink/40" style={{ left: `${todayPosition}%` }} aria-hidden="true" />
-                {projectPhaseList.length ? projectPhaseList.map((phase, phaseIndex) => (
-                  <span key={phase.id} title={phase.name} className={`absolute top-1 h-6 rounded-lg ${phase.status === 'completed' ? 'bg-emerald-400' : phase.status === 'in_progress' ? 'bg-orange-400' : colors[(projectIndex + phaseIndex) % colors.length]} ${phase.status === 'pending' ? 'opacity-60' : ''}`} style={{ left: `${position(phase.start_date)}%`, width: `${width(phase.start_date, phase.end_date)}%` }} />
-                )) : <span className={`absolute top-1 h-6 rounded-lg ${colors[projectIndex % colors.length]}`} style={{ left: `${position(project.start_date)}%`, width: `${width(project.start_date, project.end_date)}%` }} />}
+              <div className={`relative ${projectIndex === 0 ? 'pt-5' : ''}`}>
+                {projectIndex === 0 ? <span className="absolute top-0 z-20 -translate-x-1/2 rounded-full bg-ink px-2 py-1 text-[10px] font-black leading-none text-white shadow-sm" style={{ left: `${todayPosition}%` }}>今天</span> : null}
+                <div className={`relative h-9 overflow-hidden rounded-xl ${palette.track}`}>
+                  <span className="absolute inset-y-0 z-10 w-0.5 bg-ink/45" style={{ left: `${todayPosition}%` }} aria-hidden="true" />
+                  {projectPhaseList.length ? projectPhaseList.map((phase, phaseIndex) => {
+                    const phaseWidth = width(phase.start_date, phase.end_date);
+                    const tone = phase.status === 'completed'
+                      ? 'bg-emerald-300 text-emerald-950'
+                      : phase.status === 'in_progress'
+                        ? 'bg-orange-300 text-orange-950'
+                        : phaseColors[(projectIndex + phaseIndex) % phaseColors.length];
+                    return (
+                      <span key={phase.id} title={phase.name} className={`absolute top-1 flex h-7 items-center overflow-hidden rounded-lg px-1.5 text-[10px] font-black leading-none whitespace-nowrap ${tone} ${phase.status === 'pending' ? 'opacity-75' : ''}`} style={{ left: `${position(phase.start_date)}%`, width: `${phaseWidth}%` }}>
+                        {phaseWidth >= 7 ? phase.name : null}
+                      </span>
+                    );
+                  }) : <span className={`absolute top-1 flex h-7 items-center overflow-hidden rounded-lg px-2 text-[10px] font-black text-slate-700 ${phaseColors[projectIndex % phaseColors.length]}`} style={{ left: `${position(project.start_date)}%`, width: `${width(project.start_date, project.end_date)}%` }}>{project.name}</span>}
+                </div>
               </div>
-              <p className="mt-1.5 truncate text-xs font-bold text-slate-500">{currentPhase?.name || (project.status === 'completed' ? '已完成' : project.status === 'paused' ? '暂缓' : '未设置阶段')}</p>
             </SwipeGanttProjectRow>
           );
         })}
@@ -646,8 +665,8 @@ function MoodCalendar({ moods }: { moods: SpaceMood[] }) {
   );
 }
 
-function SwipeGanttProjectRow({ children, deleting, onOpen, onDelete }: {
-  children: React.ReactNode; deleting: boolean; onOpen: () => void; onDelete: () => void;
+function SwipeGanttProjectRow({ children, panelClassName, deleting, onOpen, onDelete }: {
+  children: React.ReactNode; panelClassName: string; deleting: boolean; onOpen: () => void; onDelete: () => void;
 }) {
   const [offset, setOffset] = useState(0);
   const touchStartX = useRef<number | null>(null);
@@ -661,7 +680,7 @@ function SwipeGanttProjectRow({ children, deleting, onOpen, onDelete }: {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-red-500">
+    <div className="relative overflow-hidden rounded-2xl">
       <button type="button" onClick={onDelete} disabled={deleting} className="absolute inset-y-0 right-0 flex w-28 items-center justify-center bg-red-500 text-sm font-black text-white disabled:opacity-60">
         {deleting ? '删除中...' : '删除'}
       </button>
@@ -682,7 +701,7 @@ function SwipeGanttProjectRow({ children, deleting, onOpen, onDelete }: {
           onOpen();
         }}
         style={{ transform: `translateX(${offset}px)`, touchAction: 'pan-y' }}
-        className="relative z-10 block w-full rounded-2xl bg-white p-2.5 text-left transition-transform duration-200"
+        className={`relative z-10 block w-full rounded-2xl p-2.5 text-left transition-transform duration-200 ${panelClassName}`}
       >
         {children}
       </button>
