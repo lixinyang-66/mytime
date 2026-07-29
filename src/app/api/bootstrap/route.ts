@@ -24,7 +24,7 @@ export async function GET() {
 
     const { data: projects, error: projectsError } = await supabase
       .from('projects')
-      .select('id,name,slug,start_date,end_date,status,difficulty,project_type,project_subtype')
+      .select('id,name,slug,start_date,end_date,status,difficulty,project_type,project_subtype,initial_status_note')
       .eq('space_id', auth.spaceId)
       .order('created_at', { ascending: false });
     if (projectsError) throw projectsError;
