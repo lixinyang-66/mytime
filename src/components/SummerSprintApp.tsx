@@ -461,13 +461,13 @@ function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onRef
           {error ? <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{error}</p> : null}
           <form onSubmit={createProject} className="space-y-4">
             <Field label="项目名称" value={name} onChange={setName} />
-            <Field label="项目目标" value={goal} onChange={setGoal} multiline />
+            <Field label="项目初始状态" value={initialStatusNote} onChange={setInitialStatusNote} multiline rows={2} placeholder="示例：研究生毕业论文选题已确定，正文未写。完整的描述更有助于计划生成哦~" />
+            <Field label="项目目标" value={goal} onChange={setGoal} multiline placeholder="示例：今年年底前完成整篇硕士论文的初稿。完整的描述更有助于计划生成哦~" />
             <div className="grid grid-cols-2 gap-3">
               <Field label="开始日期" type="date" value={startDate} onChange={setStartDate} />
               <Field label="截止日期" type="date" value={endDate} onChange={setEndDate} />
             </div>
-            <Field label="项目初始状态" value={initialStatusNote} onChange={setInitialStatusNote} />
-            <button type="submit" disabled={saving} className="w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在创建...' : '创建项目'}</button>
+            <button type="submit" disabled={saving} className="w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? 'AI正在生成...' : 'AI生成项目计划'}</button>
           </form>
         </section>
       ) : null}
@@ -1294,14 +1294,14 @@ function RecordList({ records }: { records: StudySession[] }) {
   return <div className="space-y-3">{records.map((item) => <div key={item.id} className="rounded-2xl bg-cream/70 p-4"><div className="flex items-center justify-between gap-3"><p className="min-w-0 text-sm font-black">{item.study_date} · {item.task_board?.name || '本次专注'} · {minutesToText(item.duration_minutes)}</p><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${item.outcome_status === 'completed' ? 'bg-emerald-100 text-emerald-800' : item.outcome_status === 'blocked' ? 'bg-rose-100 text-rose-800' : 'bg-sky-100 text-sky-800'}`}>{outcomeLabels[item.outcome_status || 'progressed']}</span></div><p className="mt-1 text-sm text-slate-600">{item.content}</p></div>)}</div>;
 }
 
-function Field({ label, value, onChange, type = 'text', multiline = false, placeholder = '' }: { label: string; value: string; onChange: (v: string) => void; type?: string; multiline?: boolean; placeholder?: string }) {
+function Field({ label, value, onChange, type = 'text', multiline = false, placeholder = '', rows = 3 }: { label: string; value: string; onChange: (v: string) => void; type?: string; multiline?: boolean; placeholder?: string; rows?: number }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-black text-slate-700">{label}</span>
       {multiline ? (
-        <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={3} className="w-full resize-none rounded-2xl border border-orange-100 bg-cream/70 px-4 py-3 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
+        <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={rows} className="w-full resize-none rounded-2xl border border-orange-100 bg-cream/70 px-4 py-3 placeholder:text-slate-400 placeholder:opacity-60 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
       ) : (
-        <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-3 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
+        <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-3 placeholder:text-slate-400 placeholder:opacity-60 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
       )}
     </label>
   );
