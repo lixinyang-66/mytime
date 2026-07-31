@@ -1,10 +1,30 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+/* eslint-disable @next/next/no-img-element */
+
+import { FormEvent, useEffect, useState, type CSSProperties } from 'react';
 import MoodRainLoader from '@/components/MoodRainLoader';
+import { MOODS } from '@/lib/moods';
 
 type Space = { id: number; name: string };
 type Panel = 'login' | 'create' | 'manage';
+
+const LOGIN_MOOD_TILES = Array.from({ length: 96 }, (_, index) => {
+  const row = Math.floor(index / 12);
+  return {
+    mood: MOODS[(index * 7 + row * 3) % MOODS.length],
+    style: {
+      left: `${(index * 37) % 104 - 3}%`,
+      top: '-6rem',
+      width: `${50 + (index % 5) * 8}px`,
+      opacity: 0.42 + (index % 5) * 0.05,
+      animationDelay: `-${((index * 1.37) % 22).toFixed(2)}s`,
+      animationDuration: `${17 + (index % 7) * 1.35}s`,
+      '--mood-drift': `${((index * 29) % 130) - 65}px`,
+      '--mood-rotation': `${((index * 41) % 54) - 27}deg`,
+    } as CSSProperties & Record<'--mood-drift' | '--mood-rotation', string>,
+  };
+});
 
 export default function LoginForm() {
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -118,20 +138,30 @@ export default function LoginForm() {
   if (spaceLoading && spaces.length === 0) return <MoodRainLoader />;
 
   return (
-    <main className="min-h-screen px-5 py-8 text-ink">
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
-        <section className="rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white/70 backdrop-blur">
-          <div className="mb-6 text-center">
-            <div className="inline-flex rounded-full bg-honey/70 px-4 py-2 text-sm font-black text-orange-800">MyTime</div>
+    <main className="relative min-h-screen overflow-hidden px-5 py-8 text-ink">
+      <LoginMoodWall />
+      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
+        <section className="rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white/70 backdrop-blur-xl">
+          <div className="mb-6 flex justify-center">
+            <div className="relative inline-block rotate-1" aria-label="MyTime">
+              <span
+                className="relative z-10 inline-block text-[2.8rem] font-black leading-none tracking-[-0.12em] text-[#2F405A]"
+                style={{ fontFamily: '"Segoe Print", "Comic Sans MS", cursive', textShadow: '3px 3px 0 #FFFAF0, 6px 6px 0 #FFDDA7, 9px 9px 18px rgba(193,125,73,0.18)' }}
+              >
+                MyTime
+              </span>
+              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[#F08A69]" aria-hidden="true" />
+              <span className="absolute -right-5 top-2 h-2.5 w-2.5 rounded-full bg-[#9ED8FF]" aria-hidden="true" />
+              <span className="absolute right-0 -bottom-1 h-2.5 w-2.5 rounded-full bg-[#BFECCF]" aria-hidden="true" />
+            </div>
           </div>
-
           <div className="mb-5 flex justify-center gap-2">
             {panel === 'login' ? (
               <>
-                <button onClick={() => openPanel('create')} className="rounded-full bg-mint/60 px-4 py-2 text-sm font-black text-emerald-800">
+                <button onClick={() => openPanel('create')} className="rounded-full bg-[linear-gradient(135deg,#FFF0CD,#FFD49D)] px-4 py-2 text-sm font-black text-[#A15B30] shadow-[0_5px_12px_rgba(237,164,89,0.12)] ring-1 ring-[#FFE0B5]">
                   创建空间
                 </button>
-                <button onClick={() => openPanel('manage')} className="rounded-full bg-sky-100 px-4 py-2 text-sm font-black text-sky-800">
+                <button onClick={() => openPanel('manage')} className="rounded-full bg-[linear-gradient(135deg,#ECF7FF,#D7EAFF)] px-4 py-2 text-sm font-black text-[#4F7294] shadow-[0_5px_12px_rgba(126,174,211,0.12)] ring-1 ring-[#D3E8F8]">
                   管理空间
                 </button>
               </>
@@ -202,7 +232,26 @@ export default function LoginForm() {
           ) : null}
         </section>
       </div>
+      <footer className="absolute bottom-5 left-0 right-0 z-10 text-center text-[11px] font-bold tracking-[0.08em] text-[#6B7C91]/75">MyTime © 2026</footer>
     </main>
+  );
+}
+
+function LoginMoodWall() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,224,138,0.26),transparent_35rem),radial-gradient(circle_at_bottom_right,rgba(158,216,255,0.30),transparent_33rem)]" />
+      {LOGIN_MOOD_TILES.map(({ mood, style }, index) => (
+        <img
+          key={`${mood.key}-${index}`}
+          src={mood.src}
+          alt=""
+          className="mood-rain-item absolute rounded-2xl object-cover mix-blend-multiply drop-shadow-[0_7px_12px_rgba(138,94,49,0.14)]"
+          style={style}
+        />
+      ))}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,250,241,0.22)_0%,rgba(255,250,241,0)_68%)]" />
+    </div>
   );
 }
 
