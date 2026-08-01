@@ -43,6 +43,8 @@ type CreationPreview = {
   initialStatusNote: string;
   classification: { projectType: ProjectType; projectSubtype: string | null; difficulty: Difficulty };
   phases: CreationPhase[];
+  planSource: 'deepseek' | 'fallback';
+  failureReason?: string;
 };
 
 export default function MyTimeApp() {
@@ -292,6 +294,8 @@ function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onRef
         difficulty: payload.classification?.difficulty || 'medium',
       },
       phases: payload.phases || [],
+      planSource: payload.planSource === 'deepseek' ? 'deepseek' : 'fallback',
+      failureReason: payload.failureReason,
     });
   }
 
@@ -509,6 +513,11 @@ function CreationPlanView({ preview, saving, error, onChange, onBack, onConfirm 
         <p className="text-sm font-bold text-orange-700">AI 项目计划</p>
         <h1 className="mt-1 text-2xl font-black">{preview.name}</h1>
         <p className="mt-2 text-sm font-bold leading-6 text-slate-500">{preview.goal}</p>
+        <p className={`mt-3 rounded-2xl px-4 py-3 text-xs font-bold ${preview.planSource === 'deepseek' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+          {preview.planSource === 'deepseek'
+            ? '已使用 DeepSeek 生成计划。'
+            : `DeepSeek 未成功返回，当前使用内置规则计划${preview.failureReason ? `（${preview.failureReason}）` : ''}。`}
+        </p>
         <div className="mt-5 space-y-3">
           {preview.phases.map((phase, index) => (
             <div key={`${index}-${phase.name}`} className="rounded-2xl bg-cream/70 p-4 ring-1 ring-orange-100">

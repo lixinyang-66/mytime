@@ -9,7 +9,7 @@ const projectTypes: ProjectType[] = ['research', 'fitness', 'competition', 'exam
 const difficulties: Difficulty[] = ['easy', 'medium', 'hard'];
 
 function normalizeProjectStatus(initialStatusNote: string): ProjectStatus {
-  const note = initialStatusNote.replace(/[\s，,。；;、]/g, '');
+  const note = initialStatusNote.replace(/[\s，。；;、]/g, '');
   if (/^(已完成|完成|已结项|项目结束)$/.test(note) || /(项目已完成|项目完成|全部完成|项目已结项)/.test(note)) return 'completed';
   if (/(暂缓|暂停|搁置|未开始|等待|延后)/.test(note)) return 'paused';
   return 'active';
@@ -29,7 +29,6 @@ function normalizePhaseOverrides(value: unknown): PhaseOverride[] | null {
   return phases;
 }
 
-// GET: 列出当前空间下所有项目
 export async function GET() {
   const auth = requireSpaceAuthResponse();
   if (auth instanceof Response) return auth;
@@ -49,7 +48,6 @@ export async function GET() {
   }
 }
 
-// POST: 先预览 AI 计划，用户确认后才真正创建项目。
 export async function POST(request: NextRequest) {
   const auth = requireSpaceAuthResponse();
   if (auth instanceof Response) return auth;
@@ -84,11 +82,13 @@ export async function POST(request: NextRequest) {
         difficulty: difficulties.includes(suppliedDifficulty as Difficulty) ? suppliedDifficulty as Difficulty : 'medium',
       }
       : await classifyProjectWithLLM({ name, goal });
+
     const hasOverrides = Object.prototype.hasOwnProperty.call(body, 'phase_overrides');
     const phaseOverrides = hasOverrides ? normalizePhaseOverrides(body.phase_overrides) : null;
     if (hasOverrides && !phaseOverrides) {
       return Response.json({ error: '请至少保留一个名称和日期完整的项目阶段。' }, { status: 400 });
     }
+
     const generatedPlan = phaseOverrides ? null : await generateAIPlanWithDiagnostics({
       name,
       goal,
@@ -101,15 +101,19 @@ export async function POST(request: NextRequest) {
       projectSubtype: classification.projectSubtype,
       initialStatusNote,
     });
-    const phases = phaseOverrides || generatedPlan!.phases;
+    const phases = phaseOverrides || generatedPlan?.phases || [];
+    const planSource = phaseOverrides ? 'modified' : generatedPlan?.planSource || 'fallback';
 
-    // 预览不写入数据库，用户可以先调整 AI 计划。
     if (isPreview) {
-      return Response.json({ classification, phases, planSource: generatedPlan?.planSource || 'user_adjusted' });
+      return Response.json({
+        classification,
+        phases,
+        planSource,
+        failureReason: generatedPlan?.failureReason,
+      });
     }
 
     const slug = `${name.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '') || 'project'}-${Date.now()}`;
-
     const { data: project, error: projectError } = await supabase
       .from('projects')
       .insert({
@@ -123,7 +127,7 @@ export async function POST(request: NextRequest) {
         difficulty: classification.difficulty,
         project_type: classification.projectType,
         project_subtype: classification.projectSubtype,
-        plan_source: 'ai',
+        plan_source: planSource,
         daily_start_time: dailyStartTime,
         daily_end_time: dailyEndTime,
         status: initialStatus,
@@ -131,7 +135,6 @@ export async function POST(request: NextRequest) {
       })
       .select('*')
       .single();
-
     if (projectError) throw projectError;
 
     if (phases.length > 0) {
@@ -149,28 +152,24 @@ export async function POST(request: NextRequest) {
       if (phaseError) throw phaseError;
     }
 
-    // 查询生成的阶段一起返回
     const { data: createdPhases } = await supabase
       .from('project_phases')
       .select('*')
       .eq('project_id', project.id)
       .order('sort_order', { ascending: true });
-
-    return Response.json({ ...project, phases: createdPhases || [] });
+    return Response.json({ ...project, phases: createdPhases || [], planSource, failureReason: generatedPlan?.failureReason });
   } catch (error) {
     const message = error instanceof Error ? error.message : '创建项目失败。';
     return Response.json({ error: message }, { status: 500 });
   }
 }
 
-// DELETE: 删除当前空间下的项目；数据库会级联清理项目关联的计划、记录、阶段和复盘。
 export async function DELETE(request: NextRequest) {
   const auth = requireSpaceAuthResponse();
   if (auth instanceof Response) return auth;
 
   const body = await request.json().catch(() => ({}));
   const projectId = Number(body.projectId || 0);
-
   if (!Number.isInteger(projectId) || projectId <= 0) {
     return Response.json({ error: '请选择要删除的项目。' }, { status: 400 });
   }
@@ -183,15 +182,11 @@ export async function DELETE(request: NextRequest) {
       .eq('id', projectId)
       .eq('space_id', auth.spaceId)
       .maybeSingle();
-
     if (projectError) throw projectError;
-    if (!project) {
-      return Response.json({ error: '项目不存在或不属于当前空间。' }, { status: 404 });
-    }
+    if (!project) return Response.json({ error: '项目不存在或不属于当前空间。' }, { status: 404 });
 
     const { error: deleteError } = await supabase.from('projects').delete().eq('id', projectId);
     if (deleteError) throw deleteError;
-
     return Response.json({ ok: true, deletedProject: project });
   } catch (error) {
     const message = error instanceof Error ? error.message : '删除项目失败。';
