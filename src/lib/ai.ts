@@ -121,8 +121,64 @@ function getPhaseConfig(projectType: ProjectType, difficulty: Difficulty): Phase
 
 // === DeepSeek V4 Pro 大模型接入 ===
 
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
-const DEEPSEEK_MODEL = 'deepseek-v4-pro';
+const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL?.trim() || 'https://api.deepseek.com/chat/completions';
+const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL?.trim() || 'deepseek-v4-pro';
+
+type DeepSeekMessage = { role: 'system' | 'user'; content: string };
+type DeepSeekCompletionData = {
+  choices?: Array<{ message?: { content?: string | null } }>;
+};
+type DeepSeekRequestResult =
+  | { data: DeepSeekCompletionData; failure?: never }
+  | { data?: never; failure: string };
+
+async function requestDeepSeek(
+  messages: DeepSeekMessage[],
+  options: { temperature: number; maxTokens: number; json: boolean },
+  operation: string,
+): Promise<DeepSeekRequestResult> {
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
+  if (!apiKey) {
+    console.warn(`[ai:${operation}] DEEPSEEK_API_KEY is missing at request time.`);
+    return { failure: 'missing_api_key' };
+  }
+
+  try {
+    const response = await fetch(DEEPSEEK_API_URL, {
+      method: 'POST',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30_000),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: DEEPSEEK_MODEL,
+        messages,
+        // V4 defaults to thinking mode. These responses are short JSON payloads,
+        // so disabling reasoning prevents the token budget being spent on CoT.
+        thinking: { type: 'disabled' },
+        temperature: options.temperature,
+        max_tokens: options.maxTokens,
+        ...(options.json ? { response_format: { type: 'json_object' } } : {}),
+      }),
+    });
+    const rawBody = await response.text();
+
+    if (!response.ok) {
+      console.error(`[ai:${operation}] DeepSeek HTTP ${response.status}: ${rawBody.slice(0, 500)}`);
+      return { failure: `http_${response.status}` };
+    }
+
+    try {
+      return { data: JSON.parse(rawBody) as DeepSeekCompletionData };
+    } catch {
+      console.error(`[ai:${operation}] DeepSeek returned non-JSON response: ${rawBody.slice(0, 500)}`);
+      return { failure: 'invalid_json_response' };
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[ai:${operation}] DeepSeek request failed: ${message}`);
+    return { failure: 'network_error' };
+  }
+}
 
 export type ProjectClassification = {
   projectType: ProjectType;
@@ -167,43 +223,20 @@ function parseProjectClassification(text: string): ProjectClassification | null 
 /** 根据用户填写的项目名称与目标自动归类，接口不可用时降级为关键词归类。 */
 export async function classifyProjectWithLLM(input: { name: string; goal: string }): Promise<ProjectClassification> {
   const fallback = fallbackProjectClassification(input.name, input.goal);
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    console.warn('[ai:classification] DEEPSEEK_API_KEY is not configured; using keyword fallback.');
-    return fallback;
-  }
+  const result = await requestDeepSeek([
+    { role: 'system', content: '你是个人长期项目分类器。仅根据用户给出的项目名称和目标分类，不要推测敏感信息。难度表示项目的拆解复杂度，不表示用户能力。' },
+    { role: 'user', content: `项目名称：${input.name}\n项目目标：${input.goal}\n\n请在 research（科研）、fitness（健身）、competition（比赛）、exam（考试）、general（其他长期目标）中选一个最贴切的类型，给出简短细分方向，并推断计划拆解难度（easy、medium、hard）。严格返回 JSON：{"project_type":"research","project_subtype":"毕业论文","difficulty":"hard"}。若无法细分，project_subtype 为空字符串。` },
+  ], { temperature: 0, maxTokens: 180, json: true }, 'classification');
+  if (result.failure) return fallback;
+  if (!result.data) return fallback;
 
-  try {
-    const response = await fetch(DEEPSEEK_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
-        messages: [
-          { role: 'system', content: '你是个人长期项目分类器。仅根据用户给出的项目名称和目标分类，不要推测敏感信息。难度表示项目的拆解复杂度，不表示用户能力。' },
-          { role: 'user', content: `项目名称：${input.name}\n项目目标：${input.goal}\n\n请在 research（科研）、fitness（健身）、competition（比赛）、exam（考试）、general（其他长期目标）中选一个最贴切的类型，给出简短细分方向，并推断计划拆解难度（easy、medium、hard）。严格返回 JSON：{"project_type":"research","project_subtype":"毕业论文","difficulty":"hard"}。若无法细分，project_subtype 为空字符串。` },
-        ],
-        temperature: 0,
-        max_tokens: 180,
-        response_format: { type: 'json_object' },
-      }),
-    });
-    if (!response.ok) {
-      console.warn(`[ai:classification] DeepSeek returned HTTP ${response.status}; using keyword fallback.`);
-      return fallback;
-    }
-    const data = await response.json();
-    const classification = parseProjectClassification(data.choices?.[0]?.message?.content || '');
-    if (!classification) {
-      console.warn('[ai:classification] DeepSeek response could not be parsed; using keyword fallback.');
-      return fallback;
-    }
-    console.info(`[ai:classification] DeepSeek classified project as ${classification.projectType}.`);
-    return classification;
-  } catch (error) {
-    console.error('[ai:classification] DeepSeek request failed; using keyword fallback.', error instanceof Error ? error.message : error);
+  const classification = parseProjectClassification(result.data.choices?.[0]?.message?.content || '');
+  if (!classification) {
+    console.warn('[ai:classification] DeepSeek response could not be parsed; using keyword fallback.');
     return fallback;
   }
+  console.info(`[ai:classification] DeepSeek classified project as ${classification.projectType}.`);
+  return classification;
 }
 
 function buildSystemPrompt(): string {
@@ -304,62 +337,34 @@ function validatePhases(phases: GeneratedPhase[], input: PlanInput): boolean {
  * 如果 API 调用失败或返回数据不合法，自动降级为规则引擎
  */
 export type PlanGenerationSource = 'deepseek' | 'fallback';
-export type GeneratedPlanResult = { phases: GeneratedPhase[]; planSource: PlanGenerationSource };
+export type GeneratedPlanResult = { phases: GeneratedPhase[]; planSource: PlanGenerationSource; failureReason?: string };
 
 export async function generateAIPlanWithDiagnostics(input: PlanInput): Promise<GeneratedPlanResult> {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-
-  if (!apiKey) {
-    console.warn('[ai:plan] DEEPSEEK_API_KEY is not configured; using domain fallback.');
-    return { phases: generateAIPlan(input), planSource: 'fallback' };
+  const result = await requestDeepSeek([
+    { role: 'system', content: buildSystemPrompt() },
+    { role: 'user', content: buildUserPrompt(input) },
+  ], { temperature: 0.4, maxTokens: 2000, json: true }, 'plan');
+  if (result.failure) {
+    return { phases: generateAIPlan(input), planSource: 'fallback', failureReason: result.failure };
+  }
+  if (!result.data) {
+    return { phases: generateAIPlan(input), planSource: 'fallback', failureReason: 'missing_response_data' };
   }
 
-  try {
-    const response = await fetch(DEEPSEEK_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
-        messages: [
-          { role: 'system', content: buildSystemPrompt() },
-          { role: 'user', content: buildUserPrompt(input) },
-        ],
-        temperature: 0.4,
-        max_tokens: 2000,
-        response_format: { type: 'json_object' },
-      }),
-    });
-
-    if (!response.ok) {
-      console.warn(`[ai:plan] DeepSeek returned HTTP ${response.status}; using domain fallback.`);
-      return { phases: generateAIPlan(input), planSource: 'fallback' };
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-
-    if (!content) {
-      console.warn('[ai:plan] DeepSeek returned empty content; using domain fallback.');
-      return { phases: generateAIPlan(input), planSource: 'fallback' };
-    }
-
-    const phases = parseAIResponse(content);
-
-    if (!phases || !validatePhases(phases, input)) {
-      console.warn('[ai:plan] DeepSeek returned invalid phase data; using domain fallback.');
-      return { phases: generateAIPlan(input), planSource: 'fallback' };
-    }
-
-    console.info('[ai:plan] DeepSeek generated a project plan successfully.');
-    return { phases, planSource: 'deepseek' };
-  } catch (error) {
-    console.error('[ai:plan] DeepSeek request failed; using domain fallback.', error instanceof Error ? error.message : error);
-    // 任何异常都降级为规则引擎，保证项目创建不会失败
-    return { phases: generateAIPlan(input), planSource: 'fallback' };
+  const content = result.data.choices?.[0]?.message?.content;
+  if (!content) {
+    console.warn('[ai:plan] DeepSeek returned empty content; using domain fallback.');
+    return { phases: generateAIPlan(input), planSource: 'fallback', failureReason: 'empty_content' };
   }
+
+  const phases = parseAIResponse(content);
+  if (!phases || !validatePhases(phases, input)) {
+    console.warn('[ai:plan] DeepSeek returned invalid phase data; using domain fallback.');
+    return { phases: generateAIPlan(input), planSource: 'fallback', failureReason: 'invalid_phase_data' };
+  }
+
+  console.info(`[ai:plan] DeepSeek generated a project plan successfully with model ${DEEPSEEK_MODEL}.`);
+  return { phases, planSource: 'deepseek' };
 }
 
 // 保持已有调用方兼容；需要追踪来源时使用 generateAIPlanWithDiagnostics。
@@ -464,30 +469,15 @@ function fallbackPersonalizedReview(input: PersonalizedReviewInput): Personalize
 }
 
 export async function generatePersonalizedReview(input: PersonalizedReviewInput): Promise<PersonalizedReview> {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) return fallbackPersonalizedReview(input);
+  const result = await requestDeepSeek([
+    { role: 'system', content: '你是谨慎的个人项目复盘助手。只基于用户提供的记录给出建议，不做诊断，不把相关性当作因果。' },
+    { role: 'user', content: buildReviewPrompt(input) },
+  ], { temperature: 0.3, maxTokens: 1600, json: true }, 'review');
+  if (result.failure) return fallbackPersonalizedReview(input);
+  if (!result.data) return fallbackPersonalizedReview(input);
 
-  try {
-    const response = await fetch(DEEPSEEK_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
-        messages: [
-          { role: 'system', content: '你是谨慎的个人项目复盘助手。只基于用户提供的记录给出建议，不做诊断，不把相关性当作因果。' },
-          { role: 'user', content: buildReviewPrompt(input) },
-        ],
-        temperature: 0.3,
-        max_tokens: 1600,
-        response_format: { type: 'json_object' },
-      }),
-    });
-    if (!response.ok) return fallbackPersonalizedReview(input);
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    const review = content ? parsePersonalizedReview(content) : null;
-    return review || fallbackPersonalizedReview(input);
-  } catch {
-    return fallbackPersonalizedReview(input);
-  }
+  const content = result.data.choices?.[0]?.message?.content;
+  const review = content ? parsePersonalizedReview(content) : null;
+  if (!review) console.warn('[ai:review] DeepSeek response could not be parsed; using fallback review.');
+  return review || fallbackPersonalizedReview(input);
 }

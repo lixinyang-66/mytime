@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { requireSpaceAuthResponse } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { generateAIPlanWithLLM } from '@/lib/ai';
+import { generateAIPlanWithDiagnostics } from '@/lib/ai';
 import { buildStats } from '@/lib/stats';
 import type { Difficulty } from '@/types';
 
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     await supabase.from('project_phases').delete().eq('project_id', projectId);
 
     // AI 生成新阶段
-    const phases = await generateAIPlanWithLLM({
+    const generatedPlan = await generateAIPlanWithDiagnostics({
       name: project.name,
       goal: project.goal || project.total_goal,
       startDate: project.start_date,
@@ -145,6 +145,7 @@ export async function POST(request: NextRequest) {
       projectType: project.project_type || 'general',
       projectSubtype: project.project_subtype,
     });
+    const phases = generatedPlan.phases;
 
     if (phases.length > 0) {
       const { error: phaseError } = await supabase.from('project_phases').insert(
@@ -164,7 +165,7 @@ export async function POST(request: NextRequest) {
     // 更新项目计划来源
     await supabase
       .from('projects')
-      .update({ plan_source: 'ai' })
+      .update({ plan_source: generatedPlan.planSource })
       .eq('id', projectId);
 
     // 返回新生成的阶段
@@ -174,7 +175,7 @@ export async function POST(request: NextRequest) {
       .eq('project_id', projectId)
       .order('sort_order', { ascending: true });
 
-    return Response.json({ phases: newPhases || [] });
+    return Response.json({ phases: newPhases || [], planSource: generatedPlan.planSource, failureReason: generatedPlan.failureReason });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'AI 生成计划失败。';
     return Response.json({ error: message }, { status: 500 });
