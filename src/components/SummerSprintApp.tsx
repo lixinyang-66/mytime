@@ -47,6 +47,13 @@ type CreationPreview = {
   failureReason?: string;
 };
 
+type CelebrationEvent = {
+  id: string;
+  moodKey: 'small-win' | 'celebration';
+  title: string;
+  message: string;
+};
+
 export default function MyTimeApp() {
   const [view, setView] = useState<View>('space');
   const [spaceData, setSpaceData] = useState<SpaceData | null>(null);
@@ -261,13 +268,30 @@ function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onRef
   const [moodPage, setMoodPage] = useState(0);
   const [turningMoodHandle, setTurningMoodHandle] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [celebrationOpen, setCelebrationOpen] = useState(false);
   const [deletingProjectId, setDeletingProjectId] = useState<number | null>(null);
   const todayKey = toDateKey(new Date());
   const todayMood = moodRecords.find((mood) => mood.mood_date === todayKey);
+  const celebration = useMemo(() => getTodayCelebration(projects, projectPhases, todayKey), [projects, projectPhases, todayKey]);
+  const celebrationMood = celebration ? getMoodByKey(celebration.moodKey) : undefined;
+  const displayedMood = celebrationMood || (todayMood ? getMoodByKey(todayMood.mood_key) : undefined);
   const moodPages = Math.ceil(MOODS.length / 4);
   const visibleMoods = MOODS.slice(moodPage * 4, moodPage * 4 + 4);
 
   useEffect(() => setMoodRecords(moods), [moods]);
+  useEffect(() => {
+    if (!celebration) {
+      setCelebrationOpen(false);
+      return;
+    }
+    const storageKey = `mytime-celebration:${space.id}:${celebration.id}`;
+    if (window.sessionStorage.getItem(storageKey) !== 'seen') setCelebrationOpen(true);
+  }, [celebration, space.id]);
+
+  function closeCelebration() {
+    if (celebration) window.sessionStorage.setItem(`mytime-celebration:${space.id}:${celebration.id}`, 'seen');
+    setCelebrationOpen(false);
+  }
 
   async function createProject(e: React.FormEvent) {
     e.preventDefault();
@@ -406,10 +430,10 @@ function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onRef
                 <path d="M7.5 3.5v3M16.5 3.5v3M3.5 9.5h17M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01" strokeLinecap="round" />
               </svg>
             </button>
-            {todayMood ? (
-              <div className="flex items-center gap-2 rounded-2xl bg-cream/70 py-1.5 pl-1.5 pr-3">
-                <img src={getMoodByKey(todayMood.mood_key)?.src} alt={getMoodByKey(todayMood.mood_key)?.label || '今日状态'} className="h-12 w-12 rounded-xl object-cover" />
-                <span className="whitespace-nowrap text-sm font-black text-slate-600">{getMoodByKey(todayMood.mood_key)?.label}</span>
+            {displayedMood ? (
+              <div className={`flex items-center gap-2 rounded-2xl bg-cream/70 py-1.5 pl-1.5 pr-3 ${celebration ? 'ring-2 ring-amber-300 shadow-[0_0_24px_rgba(251,191,36,0.62)] animate-pulse' : ''}`}>
+                <img src={displayedMood.src} alt={displayedMood.label} className="h-12 w-12 rounded-xl object-cover" />
+                <span className="whitespace-nowrap text-sm font-black text-slate-600">{celebration ? celebration.title : displayedMood.label}</span>
               </div>
             ) : null}
           </div>
@@ -449,6 +473,24 @@ function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onRef
         {moodError ? <p className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{moodError}</p> : null}
       </section>
 
+      {celebration ? (
+        <section className="mt-5 flex items-center gap-3 rounded-[1.7rem] bg-gradient-to-r from-amber-100 via-orange-50 to-rose-50 p-4 ring-1 ring-amber-200">
+          <img src={celebrationMood?.src} alt="" className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-[0_0_20px_rgba(251,191,36,0.72)]" />
+          <div><p className="text-sm font-black text-orange-700">{celebration.title}</p><p className="mt-1 text-sm font-bold leading-6 text-slate-700">{celebration.message}</p></div>
+        </section>
+      ) : null}
+
+      {celebration && celebrationOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-sm" onClick={closeCelebration}>
+          <section className="w-full max-w-sm rounded-[2rem] bg-white p-7 text-center shadow-2xl" role="dialog" aria-modal="true" aria-label={celebration.title} onClick={(event) => event.stopPropagation()}>
+            <img src={celebrationMood?.src} alt="" className="mx-auto h-24 w-24 rounded-[1.8rem] object-cover ring-4 ring-amber-200 shadow-[0_0_30px_rgba(251,191,36,0.8)]" />
+            <p className="mt-5 text-xl font-black text-orange-700">{celebration.title}</p>
+            <p className="mt-3 text-sm font-bold leading-7 text-slate-600">{celebration.message}</p>
+            <button type="button" onClick={closeCelebration} className="mt-6 w-full rounded-2xl bg-ink px-5 py-3.5 font-black text-white">收下这份鼓励</button>
+          </section>
+        </div>
+      ) : null}
+
       {calendarOpen ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/20 p-5 backdrop-blur-[2px]" onClick={() => setCalendarOpen(false)}>
           <div className="relative w-full max-w-md" role="dialog" aria-modal="true" aria-label="状态日历" onClick={(event) => event.stopPropagation()}>
@@ -487,6 +529,36 @@ function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onRef
       ) : null}
     </div>
   );
+}
+
+function getTodayCelebration(projects: ProjectSummary[], phases: ProjectPhase[], todayKey: string): CelebrationEvent | null {
+  const finishedProjects = projects.filter((project) => project.status !== 'paused' && project.end_date === todayKey);
+  if (finishedProjects.length) {
+    const projectNames = finishedProjects.slice(0, 2).map((project) => `「${project.name}」`).join('、');
+    return {
+      id: `project:${finishedProjects.map((project) => project.id).join(',')}:${todayKey}`,
+      moodKey: 'celebration',
+      title: '大胜狂欢',
+      message: finishedProjects.length === 1
+        ? `今天是${projectNames}的完成日。你把一段完整的投入走到了终点，值得好好庆祝！`
+        : `今天完成了${finishedProjects.length}个项目：${projectNames}。这份坚持非常了不起！`,
+    };
+  }
+
+  const projectsById = new Map(projects.map((project) => [project.id, project]));
+  const finishedPhases = phases.filter((phase) => phase.end_date === todayKey && projectsById.get(phase.project_id)?.status !== 'paused');
+  if (!finishedPhases.length) return null;
+
+  const firstPhase = finishedPhases[0];
+  const project = projectsById.get(firstPhase.project_id);
+  return {
+    id: `phase:${finishedPhases.map((phase) => phase.id).join(',')}:${todayKey}`,
+    moodKey: 'small-win',
+    title: '小胜即庆',
+    message: finishedPhases.length === 1
+      ? `你完成了${project ? `「${project.name}」的` : ''}「${firstPhase.name}」阶段。每一个完成，都在把你带向更大的目标。`
+      : `你今天完成了 ${finishedPhases.length} 个项目阶段。每一个完成，都在把你带向更大的目标。`,
+  };
 }
 
 function CreationPlanView({ preview, saving, error, onChange, onBack, onConfirm }: {
@@ -593,9 +665,12 @@ function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject
       <div className="mt-5 space-y-4">
         {timelineProjects.map((project, projectIndex) => {
           const projectPhaseList = phases.filter((phase) => phase.project_id === project.id);
-          const currentPhase = projectPhaseList.find((phase) => phase.status === 'in_progress') || projectPhaseList.find((phase) => phase.status === 'pending');
-          const completed = projectPhaseList.filter((phase) => phase.status === 'completed').length;
-          const progress = projectPhaseList.length ? Math.round(((completed + ((currentPhase?.progress || 0) / 100)) / projectPhaseList.length) * 100) : 0;
+          const projectStartMs = Date.parse(`${project.start_date}T00:00:00`);
+          const projectEndMs = Date.parse(`${project.end_date}T00:00:00`);
+          const todayMs = Date.parse(`${today}T00:00:00`);
+          const progress = Number.isNaN(projectStartMs) || Number.isNaN(projectEndMs) || projectEndMs <= projectStartMs
+            ? 0
+            : Math.round(Math.min(100, Math.max(0, ((todayMs - projectStartMs) / (projectEndMs - projectStartMs)) * 100)));
           const status = projectStatusMeta(project.status);
           const palette = projectPalette;
           const sheepPosition = progress;
@@ -605,7 +680,7 @@ function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject
               <div className="mb-1.5 flex items-center justify-between gap-3 pt-3">
                 <div className="flex min-w-0 items-center gap-2"><span className="truncate text-sm font-black text-slate-700">{project.name}</span><span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-black ${status.className}`}>{status.label}</span></div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <div className="relative h-3 w-20 rounded-full bg-[#FFF6E8] ring-1 ring-[#F0D8BA] sm:w-32 lg:w-72" aria-label={`项目进度 ${progress}%`}>
+                  <div className="relative h-3 w-20 rounded-full bg-[#FFF6E8] ring-1 ring-[#F0D8BA] sm:w-32 lg:w-72" aria-label={`项目计划时间进度 ${progress}%`}>
                     <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${progress}%`, backgroundImage: 'repeating-linear-gradient(135deg, #283044 0 5px, #FFF9F0 5px 10px)' }} />
                     <span className="absolute -top-5 z-20 -translate-x-1/2 text-base leading-none" style={{ left: `${sheepPosition}%` }} aria-hidden="true"><span className="block" style={{ transform: 'scaleX(-1)' }}>🐏</span></span>
                   </div>
@@ -878,10 +953,20 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
 }
 
 function WeeklyTrendChart({ trend, points }: { trend: 'minutes' | 'days'; points: Array<{ weekStart: string; label: string; minutes: number; days: number }> }) {
+  if (!points.length) {
+    return (
+      <section className="rounded-[1.8rem] bg-white/80 p-5 text-center shadow-soft ring-1 ring-[#eee3d3]">
+        <p className="text-sm font-black text-slate-700">项目尚未开始</p>
+        <p className="mt-2 text-xs font-bold text-slate-500">项目开始后，这里会从第 1 周起逐周累计展示。</p>
+      </section>
+    );
+  }
+
   const values = points.map((point) => trend === 'minutes' ? point.minutes : point.days);
   const max = Math.max(1, ...values);
+  const chartWidth = Math.max(640, points.length * 86);
   const chartPoints = points.map((point, index) => {
-    const x = 24 + (index * 592) / Math.max(1, points.length - 1);
+    const x = 32 + (index * (chartWidth - 64)) / Math.max(1, points.length - 1);
     const value = trend === 'minutes' ? point.minutes : point.days;
     const y = 132 - (value / max) * 96;
     return { ...point, x, y, value };
@@ -890,12 +975,12 @@ function WeeklyTrendChart({ trend, points }: { trend: 'minutes' | 'days'; points
 
   return (
     <section className="rounded-[1.8rem] bg-white/80 p-5 shadow-soft ring-1 ring-[#eee3d3]">
-      <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black text-slate-500">近 8 周趋势</p><h3 className="mt-1 text-base font-black">{trend === 'minutes' ? '每周专注时间' : '每周专注天数'}</h3></div><span className="text-xs font-bold text-slate-400">点击卡片收起</span></div>
-      <div className="mt-4 overflow-hidden">
-        <svg viewBox="0 0 640 180" className="h-44 w-full" role="img" aria-label={trend === 'minutes' ? '每周专注时间折线图' : '每周专注天数折线图'}>
-          <line x1="24" y1="132" x2="616" y2="132" stroke="#eadfce" strokeWidth="2" />
-          <line x1="24" y1="84" x2="616" y2="84" stroke="#f1e9de" strokeWidth="2" strokeDasharray="5 7" />
-          <line x1="24" y1="36" x2="616" y2="36" stroke="#f1e9de" strokeWidth="2" strokeDasharray="5 7" />
+      <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black text-slate-500">项目全周期趋势 · 已记录 {points.length} 周</p><h3 className="mt-1 text-base font-black">{trend === 'minutes' ? '每周专注时间' : '每周专注天数'}</h3></div><span className="text-xs font-bold text-slate-400">点击卡片收起</span></div>
+      <div className="mt-4 overflow-x-auto pb-2">
+        <svg viewBox={`0 0 ${chartWidth} 180`} className="h-44 max-w-none" style={{ width: `${chartWidth}px` }} role="img" aria-label={trend === 'minutes' ? '项目全周期每周专注时间折线图' : '项目全周期每周专注天数折线图'}>
+          <line x1="32" y1="132" x2={chartWidth - 32} y2="132" stroke="#eadfce" strokeWidth="2" />
+          <line x1="32" y1="84" x2={chartWidth - 32} y2="84" stroke="#f1e9de" strokeWidth="2" strokeDasharray="5 7" />
+          <line x1="32" y1="36" x2={chartWidth - 32} y2="36" stroke="#f1e9de" strokeWidth="2" strokeDasharray="5 7" />
           <path d={path} fill="none" stroke={trend === 'minutes' ? '#d99054' : '#8870b8'} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
           {chartPoints.map((point) => <g key={point.weekStart}><circle cx={point.x} cy={point.y} r="6" fill={trend === 'minutes' ? '#d99054' : '#8870b8'} /><text x={point.x} y="158" textAnchor="middle" fontSize="12" fill="#8290a3" fontWeight="700">{point.label}</text></g>)}
         </svg>
