@@ -490,3 +490,64 @@ export async function generatePersonalizedReview(input: PersonalizedReviewInput)
   if (!review) console.warn('[ai:review] DeepSeek response could not be parsed; using fallback review.');
   return review || fallbackPersonalizedReview(input);
 }
+
+export type FocusQuoteCandidate = { id: string; text: string };
+export type FocusQuoteSelection = {
+  quote: FocusQuoteCandidate;
+  source: 'deepseek' | 'library';
+  failureReason?: string;
+};
+
+function parseFocusQuoteId(text: string): string | null {
+  const candidates = [text, text.match(/```(?:json)?\s*([\s\S]*?)```/)?.[1], text.match(/\{[\s\S]*\}/)?.[0]];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const parsed = JSON.parse(candidate.trim()) as Record<string, unknown>;
+      const quoteId = String(parsed.quote_id || parsed.quoteId || '').trim();
+      if (quoteId) return quoteId;
+    } catch {
+      // Try the next JSON-shaped part of the response.
+    }
+  }
+  return null;
+}
+
+/**
+ * DeepSeek may only select a sentence from the reviewed MyTime pool. It cannot
+ * compose a new sentence here, so user-approved wording remains authoritative.
+ */
+export async function selectFocusQuoteWithDiagnostics(input: {
+  moodLabel: string;
+  candidates: FocusQuoteCandidate[];
+  fallback: FocusQuoteCandidate;
+}): Promise<FocusQuoteSelection> {
+  const candidateText = input.candidates
+    .map((candidate) => `${candidate.id}: ${candidate.text}`)
+    .join('\n');
+  const libraryContext = [
+    KNOWLEDGE_BASE_REQUIRED_MARKER,
+    '【MyTime 已审核状态句子库】以下候选是唯一允许使用的专注文案。',
+    candidateText,
+  ].join('\n\n');
+  const result = await requestDeepSeek([
+    {
+      role: 'system',
+      content: `${libraryContext}\n\n你是 MyTime 的状态文案挑选器。根据用户当前状态，从候选中挑选最贴合的一句。不得改写、拼接、补充或生成新文案；不得使用候选外内容。严格只返回 JSON：{"quote_id":"候选 id"}。`,
+    },
+    { role: 'user', content: `用户当前状态：${input.moodLabel}\n请从已审核句子库中选一句作为开始专注前的陪伴。` },
+  ], { temperature: 0.2, maxTokens: 80, json: true }, 'focus_quote');
+  if (result.failure || !result.data) {
+    return { quote: input.fallback, source: 'library', failureReason: result.failure || 'missing_response_data' };
+  }
+
+  const quoteId = parseFocusQuoteId(result.data.choices?.[0]?.message?.content || '');
+  const selected = input.candidates.find((candidate) => candidate.id === quoteId);
+  if (!selected) {
+    console.warn('[ai:focus_quote] DeepSeek returned an unknown quote id; using the stable library fallback.');
+    return { quote: input.fallback, source: 'library', failureReason: 'invalid_quote_id' };
+  }
+
+  console.info(`[ai:focus_quote] DeepSeek selected ${selected.id} from the reviewed library.`);
+  return { quote: selected, source: 'deepseek' };
+}
