@@ -128,6 +128,41 @@ export type StudySession = {
   task_board?: TaskBoard;
 };
 
+// === V2.3: Space-level weekly focus ===
+export type SpaceFocusPlan = {
+  id: number;
+  space_id: number;
+  week_start_date: string;
+  week_end_date: string;
+  daily_start_time: string;
+  daily_end_time: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type SpaceFocusItem = {
+  id: number;
+  space_focus_plan_id: number;
+  project_id: number;
+  daily_minutes: number;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type SpaceWeeklyReview = {
+  id: number;
+  space_id: number;
+  week_start_date: string;
+  week_end_date: string;
+  summary: string;
+  insights: string | null;
+  next_steps: string | null;
+  total_minutes: number;
+  session_count: number;
+  created_at?: string;
+};
+
 export type Stats = {
   todayMinutes: number;
   weekMinutes: number;

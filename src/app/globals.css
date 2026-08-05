@@ -47,6 +47,11 @@ select {
   scrollbar-width: none;
 }
 
+.font-cute {
+  font-family: "YouYuan", "Hannotate SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  letter-spacing: 0.025em;
+}
+
 .mood-rain-item {
   animation-name: mood-rain-fall;
   animation-iteration-count: infinite;

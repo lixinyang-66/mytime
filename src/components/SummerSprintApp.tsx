@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
-import type { Space, SpaceMood, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty, ProjectStatus, ProjectType, SessionOutcome } from '@/types';
+import type { Space, SpaceMood, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty, ProjectStatus, ProjectType, SessionOutcome, SpaceFocusPlan, SpaceFocusItem, SpaceWeeklyReview } from '@/types';
 import { formatChineseDate, getWeekEnd, getWeekStart, minutesToText, toDateKey } from '@/lib/date';
 import { getMoodByKey, MOODS } from '@/lib/moods';
 import MoodRainLoader from '@/components/MoodRainLoader';
@@ -17,6 +17,7 @@ const boardColors = [
 ];
 
 type View = 'space' | 'project';
+type SpaceMode = 'home' | 'focus';
 type ProjectMode = 'home' | 'gantt' | 'focus' | 'finish' | 'plan' | 'stats' | 'boards' | 'review';
 
 type RunningSession = { taskBoardId: number | null; phaseId: number | null; startAt: string; pausedMs: number };
@@ -54,8 +55,25 @@ type CelebrationEvent = {
   message: string;
 };
 
+type SpaceFocusProject = Pick<ProjectSummary, 'id' | 'name' | 'status' | 'start_date' | 'end_date'> & {
+  current_phase: Pick<ProjectPhase, 'id' | 'name' | 'status' | 'start_date' | 'end_date'> | null;
+};
+type SpaceFocusSession = Pick<StudySession, 'id' | 'project_id' | 'phase_id' | 'study_date' | 'duration_minutes' | 'content' | 'outcome_status' | 'created_at'> & { project: SpaceFocusProject | null };
+type SpaceFocusData = {
+  weekStart: string;
+  weekEnd: string;
+  plan: SpaceFocusPlan | null;
+  items: Array<SpaceFocusItem & { project: SpaceFocusProject | null }>;
+  projects: SpaceFocusProject[];
+  sessions: SpaceFocusSession[];
+  review: SpaceWeeklyReview | null;
+  availableMinutes: number;
+  allocatedMinutes: number;
+};
+
 export default function MyTimeApp() {
   const [view, setView] = useState<View>('space');
+  const [spaceMode, setSpaceMode] = useState<SpaceMode>('home');
   const [spaceData, setSpaceData] = useState<SpaceData | null>(null);
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
@@ -96,6 +114,7 @@ export default function MyTimeApp() {
     setSelectedProjectId(projectId);
     setView('project');
     setMode('home');
+    return payload as ProjectData;
   }
 
   async function refreshProject() {
@@ -123,14 +142,28 @@ export default function MyTimeApp() {
     return Math.max(0, Math.floor((runningUntil - start - session.pausedMs) / 1000));
   }, [session, now, paused, pauseStartedAt]);
 
-  function startFocus(taskBoardId = suggestedBoardId) {
+  function beginFocus(project: ProjectData, taskBoardId?: number | null) {
     const today = toDateKey(new Date());
-    const currentPhase = projectData?.phases.find((phase) => phase.status === 'in_progress')
-      || projectData?.phases.find((phase) => phase.start_date <= today && phase.end_date >= today)
-      || projectData?.phases.find((phase) => phase.status === 'pending')
+    const currentPhase = project.phases.find((phase) => phase.status === 'in_progress')
+      || project.phases.find((phase) => phase.start_date <= today && phase.end_date >= today)
+      || project.phases.find((phase) => phase.status === 'pending')
       || null;
-    setSession({ taskBoardId, phaseId: currentPhase?.id || null, startAt: new Date().toISOString(), pausedMs: 0 });
+    const activeBoard = project.currentPlanItems.map((item) => item.task_board).find(Boolean) as TaskBoard | undefined;
+    const boardId = taskBoardId === undefined ? activeBoard?.id || project.taskBoards[0]?.id || null : taskBoardId;
+    setProjectData(project);
+    setSelectedProjectId(project.project.id);
+    setSession({ taskBoardId: boardId, phaseId: currentPhase?.id || null, startAt: new Date().toISOString(), pausedMs: 0 });
     setPaused(false); setPauseStartedAt(null); setContent(''); setOutcomeStatus('progressed'); setMode('focus');
+  }
+
+  function startFocus(taskBoardId = suggestedBoardId) {
+    if (!projectData) return;
+    beginFocus(projectData, taskBoardId);
+  }
+
+  async function startSpaceFocus(projectId: number) {
+    const data = await loadProject(projectId);
+    if (data) beginFocus(data);
   }
 
   function togglePause() {
@@ -185,15 +218,20 @@ export default function MyTimeApp() {
   if (view === 'space' && spaceData) {
     return (
       <Shell>
-        <SpaceView
+        {spaceMode === 'focus' ? <SpaceFocusView
+          space={spaceData.space}
+          onBack={() => setSpaceMode('home')}
+          onStartFocus={startSpaceFocus}
+        /> : <SpaceView
           space={spaceData.space}
           projects={spaceData.projects}
           projectPhases={spaceData.projectPhases}
           moods={spaceData.moods}
-          onOpenProject={(id) => loadProject(id)}
+          onOpenProject={async (id) => { await loadProject(id); }}
+          onFocus={() => setSpaceMode('focus')}
           onRefresh={loadSpace}
           onLogout={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }}
-        />
+        />}
       </Shell>
     );
   }
@@ -250,8 +288,8 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void 
 }
 
 // === SPACE VIEW ===
-function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onRefresh, onLogout }: {
-  space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[]; onOpenProject: (id: number) => Promise<void>; onRefresh: () => void; onLogout: () => void;
+function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onFocus, onRefresh, onLogout }: {
+  space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[]; onOpenProject: (id: number) => Promise<void>; onFocus: () => void; onRefresh: () => void; onLogout: () => void;
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
@@ -415,6 +453,15 @@ function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onRef
         <button onClick={onLogout} className="shrink-0 rounded-full bg-white px-4 py-2.5 text-xs font-black text-slate-500 shadow-sm">退出空间</button>
       </header>
 
+      <nav className="mt-4 inline-flex items-center gap-1 rounded-full bg-white p-1.5 shadow-sm" aria-label="空间导航">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff1d9] text-orange-700" aria-label="我的空间">
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10Z" strokeLinejoin="round" /></svg>
+        </span>
+        <button type="button" onClick={onFocus} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition hover:bg-[#fff1d9] hover:text-orange-700" aria-label="专注">
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </button>
+      </nav>
+
       <section className="mt-6 rounded-[2rem] bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="w-full text-lg font-black text-slate-500">今天状态怎么样呀~</h2>
@@ -527,6 +574,135 @@ function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onRef
           onDeleteProject={deleteProject}
         />
       ) : null}
+    </div>
+  );
+}
+
+function SpaceFocusView({ space, onBack, onStartFocus }: { space: Space; onBack: () => void; onStartFocus: (projectId: number) => Promise<void> }) {
+  const [data, setData] = useState<SpaceFocusData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('18:00');
+  const [items, setItems] = useState<Array<{ projectId: number; dailyMinutes: number }>>([]);
+  const [addProjectId, setAddProjectId] = useState('');
+  const [quote, setQuote] = useState('先把注意力放在眼前这一小步。');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [reviewSaving, setReviewSaving] = useState(false);
+
+  const availableMinutes = useMemo(() => {
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+    return Math.max(0, endHour * 60 + endMinute - startHour * 60 - startMinute);
+  }, [startTime, endTime]);
+  const allocatedMinutes = useMemo(() => items.reduce((sum, item) => sum + item.dailyMinutes, 0), [items]);
+  const selectedProjectIds = useMemo(() => new Set(items.map((item) => item.projectId)), [items]);
+  const selectableProjects = data?.projects.filter((project) => !selectedProjectIds.has(project.id)) || [];
+
+  async function refreshQuote() {
+    const response = await fetch('/api/focus-quote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok && payload.quote?.text) setQuote(payload.quote.text);
+  }
+
+  async function loadFocus() {
+    setLoading(true); setError('');
+    const response = await fetch('/api/space-focus');
+    const payload = await response.json().catch(() => ({}));
+    setLoading(false);
+    if (!response.ok) { setError(payload.error || '读取本周专注信息失败。'); return; }
+    const focusData = payload as SpaceFocusData;
+    setData(focusData);
+    setStartTime(focusData.plan?.daily_start_time || '09:00');
+    setEndTime(focusData.plan?.daily_end_time || '18:00');
+    setItems(focusData.items.map((item) => ({ projectId: item.project_id, dailyMinutes: Number(item.daily_minutes) })));
+    setEditing(!focusData.plan);
+  }
+
+  useEffect(() => { void loadFocus(); void refreshQuote(); }, []);
+
+  function changeMinutes(projectId: number, delta: number) {
+    setItems((current) => current.map((item) => {
+      if (item.projectId !== projectId) return item;
+      const next = Math.max(0, item.dailyMinutes + delta);
+      return { ...item, dailyMinutes: next };
+    }).filter((item) => item.dailyMinutes > 0));
+  }
+
+  function addProject() {
+    const projectId = Number(addProjectId);
+    if (!projectId) return;
+    setItems((current) => [...current, { projectId, dailyMinutes: 30 }]);
+    setAddProjectId('');
+  }
+
+  async function savePlan() {
+    if (allocatedMinutes > availableMinutes) { setError('项目分配时间不能超过每天可专注的时间。'); return; }
+    setSaving(true); setError('');
+    const response = await fetch('/api/space-focus', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dailyStartTime: startTime, dailyEndTime: endTime, items }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    setSaving(false);
+    if (!response.ok) { setError(payload.error || '保存本周专注安排失败。'); return; }
+    setEditing(false);
+    await loadFocus();
+  }
+
+  async function createWeeklyReview() {
+    setReviewSaving(true); setError('');
+    const response = await fetch('/api/space-weekly-review', { method: 'POST' });
+    const payload = await response.json().catch(() => ({}));
+    setReviewSaving(false);
+    if (!response.ok) { setError(payload.error || '生成本周复盘失败。'); return; }
+    setData((current) => current ? { ...current, review: payload as SpaceWeeklyReview } : current);
+  }
+
+  const selectedItems = items.map((item) => ({ ...item, project: data?.projects.find((project) => project.id === item.projectId) || null }));
+  const firstProject = selectedItems.find((item) => item.project)?.project;
+  const remainingMinutes = Math.max(0, availableMinutes - allocatedMinutes);
+
+  return (
+    <div className="rounded-[2.5rem] bg-[#fff7ea] p-5 shadow-soft sm:p-8">
+      <header className="flex items-center justify-between gap-4">
+        <div title={space.name}><p className="text-sm font-black text-orange-700">MyTime</p><h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">我的空间</h1></div>
+        <button type="button" onClick={onBack} className="shrink-0 rounded-full bg-white px-4 py-2.5 text-xs font-black text-slate-500 shadow-sm">返回空间</button>
+      </header>
+
+      <nav className="mt-4 inline-flex items-center gap-1 rounded-full bg-white p-1.5 shadow-sm" aria-label="空间导航">
+        <button type="button" onClick={onBack} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition hover:bg-[#fff1d9] hover:text-orange-700" aria-label="我的空间"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10Z" strokeLinejoin="round" /></svg></button>
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff1d9] text-orange-700" aria-label="专注"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
+      </nav>
+
+      {loading ? <div className="mt-6 rounded-[2rem] bg-white p-8 text-center font-bold text-slate-500">正在读取本周专注安排…</div> : null}
+      {error ? <p className="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{error}</p> : null}
+      {!loading && data ? <>
+        <section className="mt-6 rounded-[2rem] bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-black text-orange-700">本周专注时间</p><h2 className="mt-1 text-xl font-black">{data.weekStart.replaceAll('-', '.')} — {data.weekEnd.replaceAll('-', '.')}</h2></div><button type="button" onClick={() => editing ? void savePlan() : setEditing(true)} disabled={saving} className="rounded-full bg-[#fff0d7] px-4 py-2 text-sm font-black text-orange-800 disabled:opacity-60">{editing ? (saving ? '保存中…' : '保存') : '编辑'}</button></div>
+          <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+            <label className="rounded-2xl border border-orange-100 bg-[#fffaf4] px-4 py-3"><span className="block text-xs font-bold text-slate-500">每天开始</span>{editing ? <input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} className="mt-1 w-full bg-transparent text-xl font-black outline-none" /> : <strong className="mt-1 block text-xl">{startTime}</strong>}</label>
+            <span className="pb-4 text-lg text-slate-400">→</span>
+            <label className="rounded-2xl border border-orange-100 bg-[#fffaf4] px-4 py-3"><span className="block text-xs font-bold text-slate-500">每天结束</span>{editing ? <input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} className="mt-1 w-full bg-transparent text-xl font-black outline-none" /> : <strong className="mt-1 block text-xl">{endTime}</strong>}</label>
+          </div>
+          <div className="mt-6 flex items-center justify-between gap-3"><h3 className="text-lg font-black">本周推进项目</h3>{editing && selectableProjects.length ? <div className="flex items-center gap-2"><select value={addProjectId} onChange={(event) => setAddProjectId(event.target.value)} className="max-w-36 rounded-xl border border-orange-100 bg-[#fffaf4] px-2 py-2 text-sm font-bold outline-none"><option value="">选择项目</option>{selectableProjects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select><button type="button" onClick={addProject} disabled={!addProjectId} className="rounded-xl bg-[#fff0d7] px-3 py-2 text-sm font-black text-orange-800 disabled:opacity-50">添加</button></div> : null}</div>
+          <div className="mt-3 space-y-3">
+            {selectedItems.map((item) => item.project ? <div key={item.projectId} className="flex items-center gap-3 rounded-2xl border border-orange-100 bg-[#fffaf4] px-4 py-3"><span className="h-3 w-3 shrink-0 rounded-full bg-[#ffb657]" /><div className="min-w-0 flex-1"><p className="truncate font-black">{item.project.name}</p><p className="mt-1 truncate text-xs font-bold text-slate-500">当前阶段：{item.project.current_phase?.name || '暂未设置阶段'}</p></div>{editing ? <div className="flex shrink-0 items-center gap-2 rounded-xl bg-white px-2 py-1.5 shadow-sm"><button type="button" onClick={() => changeMinutes(item.projectId, -15)} className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#fff0d7] text-lg font-black text-orange-700">−</button><strong className="min-w-14 text-center text-sm">{item.dailyMinutes} 分</strong><button type="button" onClick={() => changeMinutes(item.projectId, 15)} disabled={allocatedMinutes + 15 > availableMinutes} className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#fff0d7] text-lg font-black text-orange-700 disabled:opacity-40">＋</button></div> : <strong className="shrink-0 text-sm text-orange-800">每天 {item.dailyMinutes} 分</strong>}</div> : null)}
+            {!selectedItems.length ? <p className="rounded-2xl bg-[#fffaf4] px-4 py-5 text-sm font-bold text-slate-500">先选择本周要推进的项目。</p> : null}
+          </div>
+          <div className="mt-4 flex flex-wrap justify-between gap-2 rounded-2xl bg-[#fff8ec] px-4 py-3 text-sm font-black"><span>每天已安排 {minutesToText(allocatedMinutes)}</span><span className={allocatedMinutes > availableMinutes ? 'text-coral' : 'text-slate-500'}>还可安排 {minutesToText(remainingMinutes)}</span></div>
+        </section>
+
+        <section className="mt-5 flex flex-col items-start justify-between gap-5 rounded-[2rem] bg-[#fff0df] p-6 sm:flex-row sm:items-center">
+          <p className="font-cute max-w-xl text-2xl font-black leading-snug text-ink sm:text-3xl">“{quote}”</p>
+          <button type="button" onClick={() => firstProject && void onStartFocus(firstProject.id)} disabled={!firstProject} className="shrink-0 rounded-[1.5rem] bg-[#ffad45] px-8 py-6 text-xl font-black text-white shadow-[0_16px_28px_rgba(239,143,45,0.3)] transition hover:bg-[#f5a136] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45">开始专注</button>
+        </section>
+
+        <section className="mt-5 rounded-[2rem] bg-white p-5 shadow-sm sm:p-6"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-black text-violet-700">AI 复盘</p><h2 className="mt-1 text-xl font-black">本周整体完成情况</h2></div><button type="button" onClick={() => void createWeeklyReview()} disabled={reviewSaving} className="rounded-full bg-[#eee7ff] px-4 py-2.5 text-sm font-black text-violet-700 disabled:opacity-55">{reviewSaving ? '生成中…' : data.review ? '重新复盘' : '生成复盘'}</button></div>{data.review ? <div className="mt-4 space-y-3 text-sm font-bold leading-7 text-slate-600"><p>{data.review.summary}</p>{data.review.insights ? <p className="rounded-2xl bg-[#faf8ff] px-4 py-3">{data.review.insights}</p> : null}{data.review.next_steps ? <p className="rounded-2xl bg-[#faf8ff] px-4 py-3">{data.review.next_steps}</p> : null}</div> : <p className="mt-4 text-sm font-bold text-slate-500">完成几次专注后，再从这一周的真实记录里回看。</p>}</section>
+
+        <section className="mt-5 rounded-[2rem] bg-white p-5 shadow-sm sm:p-6"><div className="flex items-center justify-between"><h2 className="text-xl font-black">完成记录</h2><span className="rounded-full bg-[#fff0d7] px-3 py-1.5 text-xs font-black text-orange-800">{data.sessions.length} 条</span></div><div className="mt-4 divide-y divide-orange-50">{data.sessions.map((session) => <article key={session.id} className="py-4 first:pt-0"><div className="flex items-center justify-between gap-3"><p className="font-black">{session.project?.name || '项目'}</p><span className="shrink-0 text-sm font-black text-orange-700">{minutesToText(session.duration_minutes)}</span></div><p className="mt-1 text-xs font-bold text-slate-500">{session.study_date}</p><p className="mt-2 text-sm font-bold leading-6 text-slate-700">{session.content}</p></article>)}{!data.sessions.length ? <p className="py-5 text-sm font-bold text-slate-500">第一段专注结束后，在完成页写下做了什么，记录会出现在这里。</p> : null}</div></section>
+      </> : null}
     </div>
   );
 }

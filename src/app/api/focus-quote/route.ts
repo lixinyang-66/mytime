@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
-import { selectFocusQuoteWithDiagnostics } from '@/lib/ai';
-import { getFocusQuoteCandidates, getFocusQuoteLibrarySize, getStableFocusQuote } from '@/lib/focus-quotes';
+import { getFocusQuoteLibrarySize, getRandomFocusQuote } from '@/lib/focus-quotes';
 import { requireSpaceAuthResponse } from '@/lib/auth';
 import { getMoodByKey, isMoodKey } from '@/lib/moods';
 import { toDateKey } from '@/lib/date';
@@ -35,20 +34,12 @@ export async function POST(request: NextRequest) {
   }
 
   const mood = moodKey ? getMoodByKey(moodKey) : undefined;
-  const candidates = getFocusQuoteCandidates(mood?.key);
-  const fallback = getStableFocusQuote(candidates, `${auth.spaceId}:${dateKey}:${mood?.key || 'default'}`);
-  if (!fallback) return Response.json({ error: '句子库暂不可用。' }, { status: 500 });
-
-  const selection = await selectFocusQuoteWithDiagnostics({
-    moodLabel: mood?.label || '今天还没有选择状态',
-    candidates,
-    fallback,
-  });
+  const quote = getRandomFocusQuote(mood?.key);
+  if (!quote) return Response.json({ error: '句子库暂不可用。' }, { status: 500 });
 
   return Response.json({
-    quote: selection.quote,
-    source: selection.source,
-    failureReason: selection.failureReason,
+    quote,
+    source: 'library',
     mood: mood ? { key: mood.key, label: mood.label } : null,
     librarySize: getFocusQuoteLibrarySize(),
   });
