@@ -1,5 +1,5 @@
 import type { Difficulty, ProjectPhase, ProjectType, SessionOutcome } from '@/types';
-import { buildKnowledgeContext, getProjectTypeLabel } from '@/lib/knowledge';
+import { buildKnowledgeContext, getProjectTypeLabel, KNOWLEDGE_BASE_REQUIRED_MARKER } from '@/lib/knowledge';
 
 /**
  * AI Plan Generator
@@ -137,6 +137,11 @@ async function requestDeepSeek(
   options: { temperature: number; maxTokens: number; json: boolean },
   operation: string,
 ): Promise<DeepSeekRequestResult> {
+  if (!messages.some((message) => message.content.includes(KNOWLEDGE_BASE_REQUIRED_MARKER))) {
+    console.error(`[ai:${operation}] Knowledge base context is required before calling DeepSeek.`);
+    return { failure: 'knowledge_context_missing' };
+  }
+
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
   if (!apiKey) {
     console.warn(`[ai:${operation}] DEEPSEEK_API_KEY is missing at request time.`);
@@ -223,8 +228,9 @@ function parseProjectClassification(text: string): ProjectClassification | null 
 /** 根据用户填写的项目名称与目标自动归类，接口不可用时降级为关键词归类。 */
 export async function classifyProjectWithLLM(input: { name: string; goal: string }): Promise<ProjectClassification> {
   const fallback = fallbackProjectClassification(input.name, input.goal);
+  const knowledgeContext = buildKnowledgeContext('general', `${input.name} ${input.goal}`);
   const result = await requestDeepSeek([
-    { role: 'system', content: '你是个人长期项目分类器。仅根据用户给出的项目名称和目标分类，不要推测敏感信息。难度表示项目的拆解复杂度，不表示用户能力。' },
+    { role: 'system', content: `${knowledgeContext}\n\n你是个人长期项目分类器。仅根据用户给出的项目名称和目标分类，不要推测敏感信息。难度表示项目的拆解复杂度，不表示用户能力。` },
     { role: 'user', content: `项目名称：${input.name}\n项目目标：${input.goal}\n\n请在 research（科研）、fitness（健身）、competition（比赛）、exam（考试）、general（其他长期目标）中选一个最贴切的类型，给出简短细分方向，并推断计划拆解难度（easy、medium、hard）。严格返回 JSON：{"project_type":"research","project_subtype":"毕业论文","difficulty":"hard"}。若无法细分，project_subtype 为空字符串。` },
   ], { temperature: 0, maxTokens: 180, json: true }, 'classification');
   if (result.failure) return fallback;
@@ -261,7 +267,10 @@ function buildUserPrompt(input: PlanInput): string {
   const dailyMinutes = getMinutesBetween(input.dailyStart, input.dailyEnd);
   const difficultyLabel = input.difficulty === 'easy' ? '简单' : input.difficulty === 'hard' ? '困难' : '中等';
   const projectTypeLabel = getProjectTypeLabel(input.projectType);
-  const knowledgeContext = buildKnowledgeContext(input.projectType);
+  const knowledgeContext = buildKnowledgeContext(
+    input.projectType,
+    `${input.name} ${input.goal} ${input.projectSubtype || ''} ${input.initialStatusNote || ''}`,
+  );
   const domainRequirement = input.projectType === 'fitness'
     ? '这是健身项目。阶段必须围绕身体基线、训练、饮食、恢复和记录展开；不得使用科研或论文类阶段名称。'
     : input.projectType === 'research'
@@ -427,7 +436,7 @@ ${moodLines}
 ${input.spaceHistory || '历史记录不足。'}
 
 可参考的方法卡：
-${buildKnowledgeContext(input.projectType)}
+${buildKnowledgeContext(input.projectType, `${input.projectName} ${input.projectGoal} ${input.projectSubtype || ''} ${input.currentPhase || ''}`)}
 
 要求：
 1. summary 只描述可从记录中确认的事实，避免空泛鼓励；
