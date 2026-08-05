@@ -133,10 +133,12 @@ export type Stats = {
   weekMinutes: number;
   monthMinutes: number;
   totalMinutes: number;
+  totalDays: number;
   weekTargetMinutes: number;
   completionRate: number;
   streakDays: number;
   byBoardThisWeek: Record<number, number>;
+  weeklyTrend: Array<{ weekStart: string; label: string; minutes: number; days: number }>;
 };
 
 // === V2.0: Space-level bootstrap ===

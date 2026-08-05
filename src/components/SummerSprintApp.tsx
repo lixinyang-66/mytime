@@ -31,7 +31,7 @@ type ProjectData = {
   currentPlanItems: WeeklyPlanItem[];
   recentSessions: StudySession[];
   recentReviews: Review[];
-  stats: { todayMinutes: number; weekMinutes: number; monthMinutes: number; totalMinutes: number; weekTargetMinutes: number; completionRate: number; streakDays: number; byBoardThisWeek: Record<number, number> };
+  stats: { todayMinutes: number; weekMinutes: number; monthMinutes: number; totalMinutes: number; totalDays: number; weekTargetMinutes: number; completionRate: number; streakDays: number; byBoardThisWeek: Record<number, number>; weeklyTrend: Array<{ weekStart: string; label: string; minutes: number; days: number }> };
 };
 
 type CreationPhase = Pick<ProjectPhase, 'name' | 'start_date' | 'end_date'>;
@@ -737,6 +737,7 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
   onGantt: () => void; onReview: () => void; onBack: () => void;
   recordFilter: number | 'all'; onRecordFilter: (v: number | 'all') => void;
 }) {
+  const [trend, setTrend] = useState<'minutes' | 'days' | null>(null);
   const currentPhase = data.phases.find((phase) => phase.status === 'in_progress')
     || data.phases.find((phase) => phase.start_date <= toDateKey(now) && phase.end_date >= toDateKey(now))
     || data.phases.find((phase) => phase.status === 'pending')
@@ -759,6 +760,63 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
       <section className="rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
+            <p className="text-sm font-bold text-slate-500">项目计划图</p>
+            <h2 className="mt-1 text-xl font-black leading-8 text-slate-800">{data.project.goal || data.project.total_goal}</h2>
+            <p className="mt-2 text-xs font-bold text-slate-500">{data.project.start_date} → {data.project.end_date}</p>
+          </div>
+          <button onClick={onGantt} className="shrink-0 rounded-full bg-violet-100 px-4 py-2 text-sm font-black text-violet-800">编辑计划</button>
+        </div>
+        <ProjectPlanTimeline phases={data.phases} projectStart={data.project.start_date} projectEnd={data.project.end_date} />
+      </section>
+
+      <section className="grid grid-cols-2 gap-3">
+        <button onClick={() => setTrend(trend === 'minutes' ? null : 'minutes')} className={`rounded-[1.6rem] p-5 text-left transition ${trend === 'minutes' ? 'bg-[#f5e8d8] ring-2 ring-[#e6b887]' : 'bg-[#fff1df]'}`}>
+          <p className="text-sm font-bold text-slate-500">累计专注时间</p><p className="mt-2 text-2xl font-black">{minutesToText(data.stats.totalMinutes)}</p>
+        </button>
+        <button onClick={() => setTrend(trend === 'days' ? null : 'days')} className={`rounded-[1.6rem] p-5 text-left transition ${trend === 'days' ? 'bg-[#eee8f8] ring-2 ring-[#c5b2e8]' : 'bg-[#f3edfb]'}`}>
+          <p className="text-sm font-bold text-slate-500">累计专注天数</p><p className="mt-2 text-2xl font-black">{data.stats.totalDays} 天</p>
+        </button>
+      </section>
+      {trend ? <WeeklyTrendChart trend={trend} points={data.stats.weeklyTrend} /> : null}
+
+      <section className="rounded-[2rem] bg-white/80 p-5 shadow-soft">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-black">最近专注</h2>
+          <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-black text-sky-800">{recentRecords.length} 条记录</span>
+        </div>
+        <div className="mt-4"><RecordList records={filteredRecords} /></div>
+      </section>
+
+      <section className="rounded-[2rem] bg-white/80 p-5 shadow-soft">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold text-violet-600">AI 复盘</p>
+            <h2 className="mt-1 text-lg font-black">从真实投入里看下一步</h2>
+          </div>
+          <button onClick={onReview} className="rounded-full bg-violet-100 px-4 py-2 text-sm font-black text-violet-800">打开复盘</button>
+        </div>
+        {data.recentReviews[0] ? (
+          <p className="mt-4 rounded-2xl bg-violet-50 p-4 text-sm font-bold leading-6 text-violet-800">{data.recentReviews[0].summary}</p>
+        ) : (
+          <p className="mt-4 rounded-2xl bg-violet-50 p-4 text-sm font-bold leading-6 text-violet-700">还没有复盘记录，完成几次专注后可以生成第一份 AI 复盘。</p>
+        )}
+      </section>
+    </div>
+  );
+
+  return (
+    <div className="space-y-5">
+      <header className="flex items-center justify-between pt-2">
+        <div>
+          <p className="text-sm font-bold text-orange-700">MyTime</p>
+          <h1 className="text-2xl font-black tracking-tight">{data.project.name}</h1>
+        </div>
+        <button onClick={onBack} className="rounded-full bg-white/70 px-4 py-2 text-xs font-bold text-slate-500 shadow-sm">返回空间</button>
+      </header>
+
+      <section className="rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
             <p className="text-sm font-bold text-slate-500">项目目标</p>
             <h2 className="mt-2 text-base font-black leading-7 text-slate-700">{data.project.goal || data.project.total_goal}</h2>
           </div>
@@ -766,7 +824,7 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
         <div className="mt-5 rounded-[1.6rem] bg-cream p-5">
           <p className="text-sm font-bold text-slate-500">当前阶段</p>
           <p className="mt-1 text-xl font-black text-slate-800">{currentPhase?.name || '先建立项目路线图'}</p>
-          <p className="mt-2 text-xs font-bold text-slate-500">{currentPhase ? `${currentPhase.start_date} — ${currentPhase.end_date} · ${currentPhase.progress}%` : '路线图会帮助你确认先后顺序。'}</p>
+          <p className="mt-2 text-xs font-bold text-slate-500">{currentPhase ? `${currentPhase?.start_date} — ${currentPhase?.end_date} · ${currentPhase?.progress}%` : '路线图会帮助你确认先后顺序。'}</p>
         </div>
         <button onClick={onStart} className="mt-5 w-full rounded-[1.7rem] bg-gradient-to-r from-orange-400 to-amber-300 px-6 py-5 text-lg font-black text-white shadow-lg shadow-orange-100 active:scale-[0.99]">
           开始专注
@@ -819,6 +877,78 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
   );
 }
 
+function WeeklyTrendChart({ trend, points }: { trend: 'minutes' | 'days'; points: Array<{ weekStart: string; label: string; minutes: number; days: number }> }) {
+  const values = points.map((point) => trend === 'minutes' ? point.minutes : point.days);
+  const max = Math.max(1, ...values);
+  const chartPoints = points.map((point, index) => {
+    const x = 24 + (index * 592) / Math.max(1, points.length - 1);
+    const value = trend === 'minutes' ? point.minutes : point.days;
+    const y = 132 - (value / max) * 96;
+    return { ...point, x, y, value };
+  });
+  const path = chartPoints.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+
+  return (
+    <section className="rounded-[1.8rem] bg-white/80 p-5 shadow-soft ring-1 ring-[#eee3d3]">
+      <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black text-slate-500">近 8 周趋势</p><h3 className="mt-1 text-base font-black">{trend === 'minutes' ? '每周专注时间' : '每周专注天数'}</h3></div><span className="text-xs font-bold text-slate-400">点击卡片收起</span></div>
+      <div className="mt-4 overflow-hidden">
+        <svg viewBox="0 0 640 180" className="h-44 w-full" role="img" aria-label={trend === 'minutes' ? '每周专注时间折线图' : '每周专注天数折线图'}>
+          <line x1="24" y1="132" x2="616" y2="132" stroke="#eadfce" strokeWidth="2" />
+          <line x1="24" y1="84" x2="616" y2="84" stroke="#f1e9de" strokeWidth="2" strokeDasharray="5 7" />
+          <line x1="24" y1="36" x2="616" y2="36" stroke="#f1e9de" strokeWidth="2" strokeDasharray="5 7" />
+          <path d={path} fill="none" stroke={trend === 'minutes' ? '#d99054' : '#8870b8'} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+          {chartPoints.map((point) => <g key={point.weekStart}><circle cx={point.x} cy={point.y} r="6" fill={trend === 'minutes' ? '#d99054' : '#8870b8'} /><text x={point.x} y="158" textAnchor="middle" fontSize="12" fill="#8290a3" fontWeight="700">{point.label}</text></g>)}
+        </svg>
+      </div>
+    </section>
+  );
+}
+
+function ProjectPlanTimeline({ phases, projectStart, projectEnd }: { phases: ProjectPhase[]; projectStart: string; projectEnd: string }) {
+  const startMs = Date.parse(`${projectStart}T00:00:00Z`);
+  const endMs = Date.parse(`${projectEnd}T00:00:00Z`);
+  const totalDays = Math.max(1, Math.round((endMs - startMs) / 86400000) + 1);
+  const statusLabels: Record<ProjectPhase['status'], string> = { pending: '未开始', in_progress: '进行中', completed: '已完成' };
+  const statusStyles: Record<ProjectPhase['status'], string> = {
+    pending: 'bg-slate-100 text-slate-500',
+    in_progress: 'bg-sky-100 text-sky-700',
+    completed: 'bg-emerald-100 text-emerald-700',
+  };
+
+  if (!phases.length) {
+    return <div className="mt-6 rounded-2xl bg-cream p-5 text-center text-sm font-bold text-slate-500">还没有阶段计划。</div>;
+  }
+
+  return (
+    <div className="mt-6 space-y-3">
+      {phases.map((phase, index) => {
+        const phaseStartMs = Date.parse(`${phase.start_date}T00:00:00Z`);
+        const phaseEndMs = Date.parse(`${phase.end_date}T00:00:00Z`);
+        const offsetDays = Math.max(0, Math.round((phaseStartMs - startMs) / 86400000));
+        const phaseDays = Math.max(1, Math.round((phaseEndMs - phaseStartMs) / 86400000) + 1);
+        const left = Math.min(100, (offsetDays / totalDays) * 100);
+        const width = Math.max(4, Math.min(100 - left, (phaseDays / totalDays) * 100));
+        const status = phase.status || 'pending';
+
+        return (
+          <div key={`${phase.id}-${phase.sort_order}-${index}`} className="rounded-[1.4rem] bg-cream/70 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-black text-slate-800">{phase.name}</p>
+                <p className="mt-1 text-xs font-bold text-slate-500">{phase.start_date} → {phase.end_date} · {phaseDays} 天</p>
+              </div>
+              <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ${statusStyles[status]}`}>{statusLabels[status]}</span>
+            </div>
+            <div className="relative mt-4 h-3 overflow-hidden rounded-full bg-white/80" aria-label={`${phase.name} 时间范围`}>
+              <div className={`absolute top-0 h-full rounded-full ${status === 'completed' ? 'bg-emerald-300' : status === 'in_progress' ? 'bg-sky-300' : 'bg-slate-200'}`} style={{ left: `${left}%`, width: `${width}%` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // === GANTT VIEW ===
 function GanttView({ data, onBack, onRefresh }: { data: ProjectData; onBack: () => void; onRefresh: () => void }) {
   const [generating, setGenerating] = useState(false);
@@ -866,6 +996,47 @@ function GanttView({ data, onBack, onRefresh }: { data: ProjectData; onBack: () 
   const projectStart = new Date(data.project.start_date);
   const projectEnd = new Date(data.project.end_date);
   const totalDays = Math.max(1, Math.ceil((projectEnd.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+
+  return (
+    <div className="space-y-5 pt-4">
+      <div className="flex items-center justify-between gap-3">
+        <button onClick={onBack} className="rounded-full bg-white/80 px-4 py-2 text-sm font-bold text-slate-600">返回项目</button>
+        <div className="flex gap-2">
+          <button onClick={() => { setEditMode(!editMode); setEditPhases(phases.map((phase) => ({ ...phase }))); }} className="rounded-full bg-[#fff1df] px-4 py-2 text-sm font-black text-orange-800">{editMode ? '取消编辑' : '编辑计划'}</button>
+          <button onClick={regeneratePlan} disabled={generating} className="rounded-full bg-[#eee8f8] px-4 py-2 text-sm font-black text-violet-800 disabled:opacity-50">{generating ? '正在生成…' : 'AI 重新生成'}</button>
+        </div>
+      </div>
+      <section className="rounded-[2rem] bg-white/90 p-6 shadow-soft">
+        <p className="text-sm font-bold text-slate-500">项目计划图</p>
+        <h1 className="mt-1 text-2xl font-black">{data.project.name}</h1>
+        <p className="mt-1 text-sm font-bold text-slate-500">{data.project.start_date} → {data.project.end_date}</p>
+        {!editMode ? <ProjectPlanTimeline phases={data.phases} projectStart={data.project.start_date} projectEnd={data.project.end_date} /> : (
+          <div className="mt-6 space-y-3">
+            {editPhases.map((phase, index) => (
+              <div key={`${phase.id}-${index}`} className="grid gap-2 rounded-2xl bg-cream/70 p-4 md:grid-cols-[1fr_9rem_9rem]">
+                <input value={phase.name} onChange={(event) => setEditPhases((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} className="rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm font-black outline-none" />
+                <input type="date" value={phase.start_date} onChange={(event) => setEditPhases((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, start_date: event.target.value } : item))} className="rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-bold outline-none" />
+                <input type="date" value={phase.end_date} onChange={(event) => setEditPhases((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, end_date: event.target.value } : item))} className="rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-bold outline-none" />
+              </div>
+            ))}
+            <button onClick={savePhases} disabled={saving} className="w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在保存…' : '保存人工修改'}</button>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+
+  return (
+    <div className="space-y-5 pt-4">
+      <button onClick={onBack} className="rounded-full bg-white/80 px-4 py-2 text-sm font-bold text-slate-600">返回项目</button>
+      <section className="rounded-[2rem] bg-white/90 p-6 shadow-soft">
+        <p className="text-sm font-bold text-slate-500">项目计划图</p>
+        <h1 className="mt-1 text-2xl font-black">{data.project.name}</h1>
+        <p className="mt-1 text-sm font-bold text-slate-500">{data.project.start_date} → {data.project.end_date}</p>
+        <ProjectPlanTimeline phases={data.phases} projectStart={data.project.start_date} projectEnd={data.project.end_date} />
+      </section>
+    </div>
+  );
 
   return (
     <div className="space-y-5 pt-4">

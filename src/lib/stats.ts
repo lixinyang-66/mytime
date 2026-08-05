@@ -12,6 +12,7 @@ export function buildStats(sessions: StudySession[], currentPlanItems: WeeklyPla
   const weekMinutes = sum(weekSessions);
   const monthMinutes = sum(sessions.filter((item) => item.study_date.startsWith(monthKey)));
   const totalMinutes = sum(sessions);
+  const totalDays = new Set(sessions.map((item) => item.study_date)).size;
   // V2.1 的周推进以「本周预计投入」为单位，兼容旧版按日填写的计划。
   const weekTargetMinutes = currentPlanItems.reduce(
     (acc, item) => acc + Number(item.expected_minutes ?? (Number(item.daily_minutes || 0) * 7)),
@@ -31,11 +32,32 @@ export function buildStats(sessions: StudySession[], currentPlanItems: WeeklyPla
     weekMinutes,
     monthMinutes,
     totalMinutes,
+    totalDays,
     weekTargetMinutes,
     completionRate: weekTargetMinutes ? Math.min(100, Math.round((weekMinutes / weekTargetMinutes) * 100)) : 0,
     streakDays: calculateStreak(sessions, today),
     byBoardThisWeek,
+    weeklyTrend: buildWeeklyTrend(sessions, now),
   };
+}
+
+function buildWeeklyTrend(sessions: StudySession[], now: Date): Array<{ weekStart: string; label: string; minutes: number; days: number }> {
+  const currentStart = getWeekStart(now);
+  return Array.from({ length: 8 }, (_, index) => {
+    const start = new Date(currentStart);
+    start.setDate(start.getDate() - (7 * (7 - index)));
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    const startKey = toDateKey(start);
+    const endKey = toDateKey(end);
+    const items = sessions.filter((item) => item.study_date >= startKey && item.study_date <= endKey);
+    return {
+      weekStart: startKey,
+      label: `${start.getMonth() + 1}/${start.getDate()}`,
+      minutes: sum(items),
+      days: new Set(items.map((item) => item.study_date)).size,
+    };
+  });
 }
 
 function sum(items: StudySession[]): number {
