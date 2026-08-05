@@ -67,6 +67,9 @@ export async function getProjectData(projectId: number): Promise<{
     currentPlan,
     currentPlanItems,
     recentSessions,
-    stats: buildStats(sessions, currentPlanItems),
+    stats: buildStats(sessions, currentPlanItems, {
+      trendStartDate: project.start_date,
+      trendEndDate: project.end_date,
+    }),
   };
 }

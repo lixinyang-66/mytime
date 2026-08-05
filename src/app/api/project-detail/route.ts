@@ -96,7 +96,10 @@ export async function GET(request: NextRequest) {
       currentPlanItems,
       recentSessions: customRecentSessions,
       recentReviews: recentReviews || [],
-      stats: buildStats(customSessions, currentPlanItems),
+      stats: buildStats(customSessions, currentPlanItems, {
+        trendStartDate: project.start_date,
+        trendEndDate: project.end_date,
+      }),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : '读取项目数据失败。';

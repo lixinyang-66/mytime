@@ -1,7 +1,14 @@
 import type { StudySession, WeeklyPlanItem, Stats } from '@/types';
 import { diffDays, getWeekEnd, getWeekStart, toDateKey } from './date';
 
-export function buildStats(sessions: StudySession[], currentPlanItems: WeeklyPlanItem[], now = new Date()): Stats {
+type StatsOptions = {
+  now?: Date;
+  trendStartDate?: string;
+  trendEndDate?: string;
+};
+
+export function buildStats(sessions: StudySession[], currentPlanItems: WeeklyPlanItem[], options: StatsOptions = {}): Stats {
+  const now = options.now ?? new Date();
   const today = toDateKey(now);
   const weekStart = toDateKey(getWeekStart(now));
   const weekEnd = toDateKey(getWeekEnd(now));
@@ -37,23 +44,36 @@ export function buildStats(sessions: StudySession[], currentPlanItems: WeeklyPla
     completionRate: weekTargetMinutes ? Math.min(100, Math.round((weekMinutes / weekTargetMinutes) * 100)) : 0,
     streakDays: calculateStreak(sessions, today),
     byBoardThisWeek,
-    weeklyTrend: buildWeeklyTrend(sessions, now),
+    weeklyTrend: buildProjectWeeklyTrend(sessions, options.trendStartDate, options.trendEndDate, now),
   };
 }
 
-function buildWeeklyTrend(sessions: StudySession[], now: Date): Array<{ weekStart: string; label: string; minutes: number; days: number }> {
-  const currentStart = getWeekStart(now);
-  return Array.from({ length: 8 }, (_, index) => {
-    const start = new Date(currentStart);
-    start.setDate(start.getDate() - (7 * (7 - index)));
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6);
-    const startKey = toDateKey(start);
-    const endKey = toDateKey(end);
-    const items = sessions.filter((item) => item.study_date >= startKey && item.study_date <= endKey);
+function buildProjectWeeklyTrend(sessions: StudySession[], trendStartDate: string | undefined, trendEndDate: string | undefined, now: Date): Array<{ weekStart: string; label: string; minutes: number; days: number }> {
+  const fallbackStart = sessions.length
+    ? sessions.map((item) => item.study_date).sort()[0]
+    : undefined;
+  const startKey = trendStartDate || fallbackStart;
+  if (!startKey) return [];
+
+  const start = new Date(`${startKey}T00:00:00`);
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const configuredEnd = trendEndDate ? new Date(`${trendEndDate}T00:00:00`) : today;
+  const end = configuredEnd < today ? configuredEnd : today;
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return [];
+
+  const weekCount = Math.floor((end.getTime() - start.getTime()) / (7 * 86400000)) + 1;
+  return Array.from({ length: weekCount }, (_, index) => {
+    const weekStart = new Date(start);
+    weekStart.setDate(weekStart.getDate() + (index * 7));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const weekStartKey = toDateKey(weekStart);
+    const weekEndKey = toDateKey(weekEnd < end ? weekEnd : end);
+    const items = sessions.filter((item) => item.study_date >= weekStartKey && item.study_date <= weekEndKey);
     return {
-      weekStart: startKey,
-      label: `${start.getMonth() + 1}/${start.getDate()}`,
+      weekStart: weekStartKey,
+      label: `第${index + 1}周`,
       minutes: sum(items),
       days: new Set(items.map((item) => item.study_date)).size,
     };
