@@ -80,7 +80,22 @@ export async function POST(request: NextRequest) {
       ? `近 8 周共 ${sessions?.length} 次专注、${historyMinutes} 分钟；按项目投入：${Array.from(historyByProject.entries()).map(([id, minutes]) => `${projectNames.get(id) || '项目'} ${minutes} 分钟`).join('，')}。`
       : '近 8 周暂无专注记录。';
 
+    const { data: focusPlan, error: focusPlanError } = await supabase
+      .from('space_focus_plans')
+      .select('id')
+      .eq('space_id', auth.spaceId)
+      .eq('week_start_date', periodStart)
+      .maybeSingle();
+    if (focusPlanError) throw focusPlanError;
+    const { data: focusItems, error: focusItemsError } = focusPlan
+      ? await supabase.from('space_focus_items').select('project_id,daily_minutes').eq('space_focus_plan_id', focusPlan.id)
+      : { data: [], error: null };
+    if (focusItemsError) throw focusItemsError;
+    const projectDailyTarget = Number((focusItems || []).find((item) => item.project_id === projectId)?.daily_minutes || 0);
+    const projectSessions = weeklySessions.filter((item) => item.project_id === projectId);
+
     const review = await generatePersonalizedReview({
+      reviewScope: 'project',
       projectName: project.name,
       projectGoal: project.goal || project.total_goal || '未填写',
       projectType: project.project_type || 'general',
@@ -88,18 +103,19 @@ export async function POST(request: NextRequest) {
       periodStart,
       periodEnd,
       currentPhase: currentPhase?.name,
-      sessions: weeklySessions.map((item) => ({
+      sessions: projectSessions.map((item) => ({
         studyDate: item.study_date,
         durationMinutes: Number(item.duration_minutes || 0),
         content: `${projectNames.get(item.project_id) || '项目'}：${item.content || '未填写结果'}`,
         outcome: item.outcome_status || 'progressed',
-        phaseName: item.project_id === projectId ? phaseById.get(item.phase_id) || null : null,
+        phaseName: phaseById.get(item.phase_id) || null,
       })),
       moods: (moods || []).map((item) => ({ date: item.mood_date, label: getMoodByKey(item.mood_key)?.label || item.mood_key })),
       spaceHistory: historyText,
+      dailyTargetMinutes: projectDailyTarget,
+      dailyPlanDescription: projectDailyTarget > 0 ? `${project.name} ${projectDailyTarget} 分钟/天` : '本周未将该项目加入推进项目。',
     });
 
-    const projectSessions = weeklySessions.filter((item) => item.project_id === projectId);
     const totalMinutes = projectSessions.reduce((sum, item) => sum + Number(item.duration_minutes || 0), 0);
     const completionRate = projectSessions.length
       ? Math.round((projectSessions.filter((item) => item.outcome_status === 'completed').length / projectSessions.length) * 100)

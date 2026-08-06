@@ -242,7 +242,8 @@ export default function MyTimeApp() {
         {spaceMode === 'focus' ? <SpaceFocusView
           space={spaceData.space}
           onBack={() => { setSpaceMode('home'); void loadSpace(); }}
-            onStartFocus={startSpaceFocus}
+          onLogout={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }}
+          onStartFocus={startSpaceFocus}
         /> : <SpaceView
           space={spaceData.space}
           projects={spaceData.projects}
@@ -604,7 +605,7 @@ function SpaceView({ space, projects, projectPhases, moods, progressAssessments,
   );
 }
 
-function SpaceFocusView({ space, onBack, onStartFocus }: { space: Space; onBack: () => void; onStartFocus: (projectId: number, projectOptions: SpaceFocusProject[]) => Promise<void> }) {
+function SpaceFocusView({ space, onBack, onLogout, onStartFocus }: { space: Space; onBack: () => void; onLogout: () => void; onStartFocus: (projectId: number, projectOptions: SpaceFocusProject[]) => Promise<void> }) {
   const [data, setData] = useState<SpaceFocusData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -699,7 +700,7 @@ function SpaceFocusView({ space, onBack, onStartFocus }: { space: Space; onBack:
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff1d9] text-orange-700" aria-label="专注"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
           </nav>
         </div>
-        <button type="button" onClick={onBack} className="shrink-0 rounded-full bg-white px-4 py-2.5 text-xs font-black text-slate-500 shadow-sm">返回空间</button>
+        <button type="button" onClick={onLogout} className="shrink-0 rounded-full bg-white px-4 py-2.5 text-xs font-black text-slate-500 shadow-sm">退出空间</button>
       </header>
 
       {loading ? <div className="mt-6 rounded-[2rem] bg-white p-8 text-center font-bold text-slate-500">正在读取本周专注安排…</div> : null}

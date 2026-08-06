@@ -30,11 +30,27 @@ export async function POST(_request: NextRequest) {
       ? await supabase.from('study_sessions').select('project_id,phase_id,study_date,duration_minutes,content,outcome_status').in('project_id', projectIds).gte('study_date', weekStart).lte('study_date', weekEnd).order('study_date')
       : { data: [], error: null };
     if (sessionsError) throw sessionsError;
+    const { data: focusPlan, error: focusPlanError } = await supabase
+      .from('space_focus_plans')
+      .select('id')
+      .eq('space_id', auth.spaceId)
+      .eq('week_start_date', weekStart)
+      .maybeSingle();
+    if (focusPlanError) throw focusPlanError;
+    const { data: focusItems, error: focusItemsError } = focusPlan
+      ? await supabase.from('space_focus_items').select('project_id,daily_minutes').eq('space_focus_plan_id', focusPlan.id)
+      : { data: [], error: null };
+    if (focusItemsError) throw focusItemsError;
+    const dailyTargetMinutes = (focusItems || []).reduce((sum, item) => sum + Number(item.daily_minutes || 0), 0);
+    const dailyPlanDescription = (focusItems || []).length
+      ? (focusItems || []).map((item) => `${projectNames.get(item.project_id) || '项目'} ${Number(item.daily_minutes || 0)} 分钟/天`).join('；')
+      : '本周未配置推进项目。';
     const { data: moods, error: moodsError } = await supabase
       .from('space_moods').select('mood_date,mood_key').eq('space_id', auth.spaceId).gte('mood_date', weekStart).lte('mood_date', weekEnd).order('mood_date');
     if (moodsError) throw moodsError;
 
     const review = await generatePersonalizedReview({
+      reviewScope: 'weekly',
       projectName: '本周全部项目',
       projectGoal: '根据本周真实完成记录，回看整体投入、阻碍和下一步。',
       projectType: 'general',
@@ -48,6 +64,8 @@ export async function POST(_request: NextRequest) {
       })),
       moods: (moods || []).map((mood) => ({ date: mood.mood_date, label: getMoodByKey(mood.mood_key)?.label || mood.mood_key })),
       spaceHistory: `本周共有 ${(projects || []).length} 个项目。`,
+      dailyTargetMinutes,
+      dailyPlanDescription,
     });
     const totalMinutes = (sessions || []).reduce((sum, session) => sum + Number(session.duration_minutes || 0), 0);
     const { data: saved, error: saveError } = await supabase
