@@ -59,7 +59,11 @@ select {
 }
 
 .font-quote {
-  font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  /* 仅用于状态句子：保持手写感，禁止浏览器伪造粗体造成笔画叠压。 */
+  font-family: "MyTime Cute", "YouYuan", "Hannotate SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  font-weight: 400;
+  font-synthesis: none;
+  letter-spacing: 0.06em;
 }
 
 .focus-mood-pile-item {
