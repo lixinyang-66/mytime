@@ -710,7 +710,7 @@ function SpaceFocusView({ space, onBack, onStartFocus }: { space: Space; onBack:
         </section>
 
         <section className="mt-5 flex flex-col items-start justify-between gap-5 rounded-[2rem] bg-[#fff0df] p-6 sm:flex-row sm:items-center">
-          <p className="font-cute max-w-xl text-lg font-black leading-relaxed text-ink sm:text-xl"><span className="font-quote">“</span>{quote}<span className="font-quote">”</span></p>
+          <p className="font-quote max-w-xl text-xl leading-[1.55] text-ink sm:text-2xl">“{quote}”</p>
           <button type="button" onClick={() => firstProject && void onStartFocus(firstProject.id, selectedItems.map((item) => item.project).filter(Boolean) as SpaceFocusProject[])} disabled={!firstProject} className="shrink-0 rounded-[1.75rem] bg-[#ffad45] px-10 py-7 text-2xl font-black text-white shadow-[0_16px_28px_rgba(239,143,45,0.3)] transition hover:bg-[#f5a136] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 sm:px-12 sm:text-3xl">开始专注</button>
         </section>
 
@@ -1502,7 +1502,7 @@ function FocusView({ elapsedSeconds, paused, onPause, onFinish }: {
   const today = new Date();
   const dateLabel = `${today.getMonth() + 1}月${today.getDate()}日 · 星期${['日', '一', '二', '三', '四', '五', '六'][today.getDay()]}`;
   return (
-    <div className="focus-mood-pile-scene relative grid min-h-[calc(100vh-3rem)] place-items-center overflow-hidden rounded-[3.5rem] px-5 py-20 shadow-soft">
+    <div className="focus-mood-pile-scene fixed inset-0 z-50 grid min-h-[100dvh] w-screen place-items-center overflow-hidden px-5 py-20">
       <FocusMoodPileBackground />
       <section className="relative z-10 w-full max-w-[34rem] rounded-[2.75rem] border-[3px] border-white bg-white/95 px-6 py-16 text-center shadow-[0_28px_70px_rgba(43,55,85,0.15)] backdrop-blur-sm sm:px-12 sm:py-20">
         <p className="text-sm font-bold tracking-[0.12em] text-slate-500">{dateLabel}</p>
