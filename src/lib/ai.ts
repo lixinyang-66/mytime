@@ -460,9 +460,12 @@ export type PersonalizedReviewInput = {
   projectGoal: string;
   projectType: ProjectType;
   projectSubtype?: string | null;
+  reviewScope: 'weekly' | 'project';
   periodStart: string;
   periodEnd: string;
   currentPhase?: string | null;
+  dailyTargetMinutes?: number;
+  dailyPlanDescription?: string;
   sessions: ReviewSessionInput[];
   moods: MoodInput[];
   spaceHistory?: string;
@@ -474,7 +477,56 @@ export type PersonalizedReview = {
   nextSteps: string;
 };
 
+function buildDailyActualLines(input: PersonalizedReviewInput): string {
+  const actualByDate = new Map<string, number>();
+  for (const session of input.sessions) {
+    actualByDate.set(session.studyDate, (actualByDate.get(session.studyDate) || 0) + session.durationMinutes);
+  }
+  const start = new Date(`${input.periodStart}T00:00:00Z`);
+  const end = new Date(`${input.periodEnd}T00:00:00Z`);
+  const target = Math.max(0, Math.round(input.dailyTargetMinutes || 0));
+  const lines: string[] = [];
+  for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    const date = cursor.toISOString().slice(0, 10);
+    const actual = actualByDate.get(date) || 0;
+    const comparison = target
+      ? actual >= target ? '达到配置' : actual > 0 ? '低于配置' : '无记录'
+      : actual > 0 ? '有投入，未配置每日目标' : '无记录，未配置每日目标';
+    lines.push(`${date}：${actual} 分钟，${comparison}`);
+  }
+  return lines.join('\n');
+}
+
 function buildReviewPrompt(input: PersonalizedReviewInput): string {
+  const dailyTarget = Math.max(0, Math.round(input.dailyTargetMinutes || 0));
+  const scopeName = input.reviewScope === 'weekly' ? '本周整体' : `项目「${input.projectName}」`;
+  const dailyActualLines = buildDailyActualLines(input);
+  const compactSessionLines = input.sessions.length
+    ? input.sessions.map((session) => `${session.studyDate}｜${session.durationMinutes} 分钟｜${session.outcome}｜${session.phaseName || '未关联阶段'}｜${session.content.slice(0, 180)}`).join('\n')
+    : '本周期尚无专注记录。';
+
+  return `请为 MyTime 用户生成一份简洁、面向用户的 ${scopeName} 复盘。
+
+项目：${input.projectName}
+项目目标：${input.projectGoal}
+复盘周期：${input.periodStart} 至 ${input.periodEnd}
+当前阶段：${input.currentPhase || '未设置'}
+每日配置时间：${dailyTarget ? `${dailyTarget} 分钟/天` : '本周未配置'}
+本周推进项目配置：${input.dailyPlanDescription || '本周未配置'}
+
+专注记录：
+${compactSessionLines}
+
+每日实际投入：
+${dailyActualLines}
+
+严格输出要求：
+1. summary 必须以“一、已完成的内容”开头，仅写能从专注记录内容中确认的完成或推进；没有可确认内容时只写“暂无可确认的完成内容。”不要写记录数量、项目总数、当前状态、数据来源或你的分析过程。
+2. insights 必须以“二、投入与计划执行情况”开头，并在同一段中依次写清：计划进度、每日配置时间达成情况、投入节奏。计划进度只能使用符合、略低于、明显低于或尚无可比计划之一；每日达成要按日期或日期组说明实际时长与每日配置的对比；投入节奏只依据记录列出投入较高日、较低日或无记录日。无记录只能写“无记录”，绝不能断言为偷懒。
+3. next_steps 必须以“三、下一步怎么做”开头，给出 1—3 条直接、具体、可执行的下一步。
+4. 不要写“本周只有一条记录”“当前状态是”“从记录看”“数据不足以”“我是基于”等元叙述；不要复述数据采集过程、模型思路或无关状态信息。
+5. 不要增加其他标题、前言、结语或空泛鼓励。严格返回 JSON 对象：{"summary":"...","insights":"...","next_steps":"..."}。`;
+
   const sessionLines = input.sessions.length
     ? input.sessions.map((session) => `${session.studyDate}｜${session.durationMinutes} 分钟｜${session.outcome}｜${session.phaseName || '未关联阶段'}｜${session.content.slice(0, 180)}`).join('\n')
     : '本周期尚无专注记录。';
@@ -528,6 +580,33 @@ function parsePersonalizedReview(text: string): PersonalizedReview | null {
 }
 
 function fallbackPersonalizedReview(input: PersonalizedReviewInput): PersonalizedReview {
+  const reviewTotalMinutes = input.sessions.reduce((sum, session) => sum + session.durationMinutes, 0);
+  const dailyTarget = Math.max(0, Math.round(input.dailyTargetMinutes || 0));
+  const dailyLines = buildDailyActualLines(input);
+  const dayCount = Math.max(1, Math.round((new Date(`${input.periodEnd}T00:00:00Z`).getTime() - new Date(`${input.periodStart}T00:00:00Z`).getTime()) / 86_400_000) + 1);
+  const expectedMinutes = dailyTarget * dayCount;
+  const executionLabel = !dailyTarget
+    ? '尚无可比计划'
+    : reviewTotalMinutes >= expectedMinutes * 0.9 ? '符合'
+      : reviewTotalMinutes >= expectedMinutes * 0.5 ? '略低于'
+        : '明显低于';
+  const completedDetails = input.sessions
+    .map((session) => session.content.trim())
+    .filter((content) => content && content !== '未填写内容')
+    .slice(0, 3);
+  const completedText = completedDetails.length
+    ? completedDetails.map((content) => `- ${content}`).join('\n')
+    : '暂无可确认的完成内容。';
+  const daysWithRecords = Array.from(new Set(input.sessions.map((session) => session.studyDate)));
+  const noRecordDays = dailyLines.split('\n').filter((line) => line.includes('无记录')).map((line) => line.slice(0, 10));
+  const highInputDays = daysWithRecords.length ? daysWithRecords.join('、') : '暂无';
+
+  return {
+    summary: `一、已完成的内容\n${completedText}`,
+    insights: `二、投入与计划执行情况\n- 计划进度：${executionLabel}${dailyTarget ? `；实际投入 ${reviewTotalMinutes} 分钟，配置总量 ${expectedMinutes} 分钟。` : '；本周未配置每日时间。'}\n- 每日配置时间达成情况：${dailyLines}\n- 投入节奏：有记录日为 ${highInputDays}${noRecordDays.length ? `；无记录日为 ${noRecordDays.join('、')}。` : '；本周期每天均有记录。'}`,
+    nextSteps: `三、下一步怎么做\n1. 围绕“${input.currentPhase || input.projectName}”保留一个可在下一次专注中完成的小动作。\n2. 每次结束专注后写下实际完成内容，方便下次复盘判断进展。`,
+  };
+
   const totalMinutes = input.sessions.reduce((sum, session) => sum + session.durationMinutes, 0);
   const completedCount = input.sessions.filter((session) => session.outcome === 'completed').length;
   const blocked = input.sessions.filter((session) => session.outcome === 'blocked');

@@ -27,6 +27,18 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const periodStart = toDateKey(getWeekStart(now));
     const periodEnd = toDateKey(getWeekEnd(now));
+    const { data: focusPlan, error: focusPlanError } = await supabase
+      .from('space_focus_plans')
+      .select('id')
+      .eq('space_id', auth.spaceId)
+      .eq('week_start_date', periodStart)
+      .maybeSingle();
+    if (focusPlanError) throw focusPlanError;
+    const { data: focusItems, error: focusItemsError } = focusPlan
+      ? await supabase.from('space_focus_items').select('project_id,daily_minutes').eq('space_focus_plan_id', focusPlan.id)
+      : { data: [], error: null };
+    if (focusItemsError) throw focusItemsError;
+    const projectDailyTarget = Number((focusItems || []).find((item) => item.project_id === projectId)?.daily_minutes || 0);
     const historyStartDate = getWeekStart(now);
     historyStartDate.setDate(historyStartDate.getDate() - 56);
     const historyStart = toDateKey(historyStartDate);
@@ -85,10 +97,13 @@ export async function POST(request: NextRequest) {
       projectGoal: project.goal || project.total_goal || '未填写',
       projectType: project.project_type || 'general',
       projectSubtype: project.project_subtype,
+      reviewScope: 'project',
       periodStart,
       periodEnd,
       currentPhase: currentPhase?.name,
-      sessions: weeklySessions.map((item) => ({
+      dailyTargetMinutes: projectDailyTarget,
+      dailyPlanDescription: projectDailyTarget ? `${project.name} ${projectDailyTarget} 分钟/天` : '本周未将该项目加入推进项目。',
+      sessions: weeklySessions.filter((item) => item.project_id === projectId).map((item) => ({
         studyDate: item.study_date,
         durationMinutes: Number(item.duration_minutes || 0),
         content: `${projectNames.get(item.project_id) || '项目'}：${item.content || '未填写结果'}`,
