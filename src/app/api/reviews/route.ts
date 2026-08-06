@@ -42,7 +42,10 @@ export async function GET(request: NextRequest) {
     const { data: reviews, error } = await query;
     if (error) throw error;
 
-    return Response.json(reviews || []);
+    const latestReviews = (reviews || []).filter((review, index, list) =>
+      list.findIndex((candidate) => candidate.review_type === review.review_type && candidate.period_start === review.period_start) === index,
+    );
+    return Response.json(latestReviews);
   } catch (error) {
     const message = error instanceof Error ? error.message : '读取复盘数据失败。';
     return Response.json({ error: message }, { status: 500 });
@@ -82,21 +85,31 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: '项目不存在或无权限访问。' }, { status: 404 });
     }
 
-    const { data: review, error } = await supabase
+    const reviewPayload = {
+      project_id: projectId,
+      review_type: reviewType,
+      period_start: periodStart,
+      period_end: periodEnd,
+      summary,
+      insights: body.insights || null,
+      next_steps: body.next_steps || null,
+      total_minutes: Number(body.total_minutes || 0),
+      completion_rate: Number(body.completion_rate || 0),
+    };
+    const { data: existingReview, error: existingReviewError } = await supabase
       .from('reviews')
-      .insert({
-        project_id: projectId,
-        review_type: reviewType,
-        period_start: periodStart,
-        period_end: periodEnd,
-        summary,
-        insights: body.insights || null,
-        next_steps: body.next_steps || null,
-        total_minutes: Number(body.total_minutes || 0),
-        completion_rate: Number(body.completion_rate || 0),
-      })
-      .select('*')
-      .single();
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('review_type', reviewType)
+      .eq('period_start', periodStart)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingReviewError) throw existingReviewError;
+
+    const { data: review, error } = existingReview
+      ? await supabase.from('reviews').update(reviewPayload).eq('id', existingReview.id).select('*').single()
+      : await supabase.from('reviews').insert(reviewPayload).select('*').single();
     if (error) throw error;
 
     return Response.json(review);

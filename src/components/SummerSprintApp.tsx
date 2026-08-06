@@ -242,6 +242,7 @@ export default function MyTimeApp() {
         {spaceMode === 'focus' ? <SpaceFocusView
           space={spaceData.space}
           onBack={() => { setSpaceMode('home'); void loadSpace(); }}
+          onExit={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }}
             onStartFocus={startSpaceFocus}
         /> : <SpaceView
           space={spaceData.space}
@@ -604,7 +605,7 @@ function SpaceView({ space, projects, projectPhases, moods, progressAssessments,
   );
 }
 
-function SpaceFocusView({ space, onBack, onStartFocus }: { space: Space; onBack: () => void; onStartFocus: (projectId: number, projectOptions: SpaceFocusProject[]) => Promise<void> }) {
+function SpaceFocusView({ space, onBack, onExit, onStartFocus }: { space: Space; onBack: () => void; onExit: () => Promise<void>; onStartFocus: (projectId: number, projectOptions: SpaceFocusProject[]) => Promise<void> }) {
   const [data, setData] = useState<SpaceFocusData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -699,7 +700,7 @@ function SpaceFocusView({ space, onBack, onStartFocus }: { space: Space; onBack:
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff1d9] text-orange-700" aria-label="专注"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
           </nav>
         </div>
-        <button type="button" onClick={onBack} className="shrink-0 rounded-full bg-white px-4 py-2.5 text-xs font-black text-slate-500 shadow-sm">返回空间</button>
+        <button type="button" onClick={() => void onExit()} className="shrink-0 rounded-full bg-white px-4 py-2.5 text-xs font-black text-slate-500 shadow-sm">退出空间</button>
       </header>
 
       {loading ? <div className="mt-6 rounded-[2rem] bg-white p-8 text-center font-bold text-slate-500">正在读取本周专注安排…</div> : null}
@@ -725,7 +726,7 @@ function SpaceFocusView({ space, onBack, onStartFocus }: { space: Space; onBack:
           <button type="button" onClick={() => firstProject && void onStartFocus(firstProject.id, selectedItems.map((item) => item.project).filter(Boolean) as SpaceFocusProject[])} disabled={!firstProject} className="shrink-0 rounded-[1.75rem] bg-[#ffad45] px-10 py-7 text-2xl font-black text-white shadow-[0_16px_28px_rgba(239,143,45,0.3)] transition hover:bg-[#f5a136] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 sm:px-12 sm:text-3xl">开始专注</button>
         </section>
 
-        <section className="mt-5 rounded-[2rem] bg-white p-5 shadow-sm sm:p-6"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-black text-violet-700">AI 复盘</p><h2 className="mt-1 text-xl font-black">本周整体完成情况</h2></div><button type="button" onClick={() => void createWeeklyReview()} disabled={reviewSaving} className="rounded-full bg-[#eee7ff] px-4 py-2.5 text-sm font-black text-violet-700 disabled:opacity-55">{reviewSaving ? '生成中…' : data.review ? '重新复盘' : '生成复盘'}</button></div>{data.review ? <div className="mt-4 space-y-3 text-sm font-bold leading-7 text-slate-600"><p>{data.review.summary}</p>{data.review.insights ? <p className="rounded-2xl bg-[#faf8ff] px-4 py-3">{data.review.insights}</p> : null}{data.review.next_steps ? <p className="rounded-2xl bg-[#faf8ff] px-4 py-3">{data.review.next_steps}</p> : null}</div> : <p className="mt-4 text-sm font-bold text-slate-500">完成几次专注后，再从这一周的真实记录里回看。</p>}</section>
+        <section className="mt-5 rounded-[2rem] bg-white p-5 shadow-sm sm:p-6"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-black text-violet-700">空间 AI 复盘</p><h2 className="mt-1 text-xl font-black">本周空间整体情况</h2></div><button type="button" onClick={() => void createWeeklyReview()} disabled={reviewSaving} className="rounded-full bg-[#eee7ff] px-4 py-2.5 text-sm font-black text-violet-700 disabled:opacity-55">{reviewSaving ? '生成中…' : data.review ? '更新本周复盘' : '生成复盘'}</button></div>{data.review ? <ReviewContent summary={data.review.summary} insights={data.review.insights} nextSteps={data.review.next_steps} className="mt-4" /> : <p className="mt-4 text-sm font-bold text-slate-500">它会汇总空间内所有项目本周的真实记录，回看整体安排与下一步。</p>}</section>
 
         <section className="mt-5 rounded-[2rem] bg-white p-5 shadow-sm sm:p-6"><div className="flex items-center justify-between"><h2 className="text-xl font-black">完成记录</h2><span className="rounded-full bg-[#fff0d7] px-3 py-1.5 text-xs font-black text-orange-800">{data.sessions.length} 条</span></div><div className="mt-4 divide-y divide-orange-50">{data.sessions.map((session) => <article key={session.id} className="py-4 first:pt-0"><div className="flex items-center justify-between gap-3"><p className="font-black">{session.project?.name || '项目'}</p><span className="shrink-0 text-sm font-black text-orange-700">{minutesToText(session.duration_minutes)}</span></div><p className="mt-1 text-xs font-bold text-slate-500">{session.study_date}</p><p className="mt-2 text-sm font-bold leading-6 text-slate-700">{session.content}</p></article>)}{!data.sessions.length ? <p className="py-5 text-sm font-bold text-slate-500">第一段专注结束后，在完成页写下做了什么，记录会出现在这里。</p> : null}</div></section>
       </> : null}
@@ -1438,10 +1439,10 @@ function ReviewView({ data, projectId, onBack, onRefresh }: { data: ProjectData;
       <button onClick={onBack} className="rounded-full bg-white/80 px-4 py-2 text-sm font-bold text-slate-600">返回首页</button>
 
       <section className="rounded-[2rem] bg-white/90 p-6 shadow-soft">
-        <p className="text-sm font-bold text-slate-500">AI 复盘</p>
-        <h1 className="mt-1 text-2xl font-black">从真实投入里看下一步</h1>
-        <p className="mt-3 rounded-2xl bg-violet-50 p-4 text-sm font-bold leading-6 text-violet-700">AI 会汇总本空间本周的专注时长、完成内容、受阻标记和每日状态，并以当前项目为重点给出建议。状态只用于观察线索，不作诊断或因果判断。</p>
-        <button onClick={generateReview} disabled={generating} className="mt-5 w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{generating ? '正在生成周复盘…' : '生成本周 AI 复盘'}</button>
+        <p className="text-sm font-bold text-slate-500">项目 AI 复盘</p>
+        <h1 className="mt-1 text-2xl font-black">只看这个项目的下一步</h1>
+        <p className="mt-3 rounded-2xl bg-violet-50 p-4 text-sm font-bold leading-6 text-violet-700">这份复盘只使用当前项目本周的目标、阶段与专注记录，不会混入其他项目的进度。每周重复生成会更新本周这一份复盘。</p>
+        <button onClick={generateReview} disabled={generating} className="mt-5 w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{generating ? '正在更新项目周复盘…' : '生成项目本周 AI 复盘'}</button>
       </section>
 
       {data.recentReviews.length > 0 ? (
@@ -1456,9 +1457,7 @@ function ReviewView({ data, projectId, onBack, onRefresh }: { data: ProjectData;
                   </span>
                   <span className="text-xs font-bold text-slate-500">{review.period_start}</span>
                 </div>
-                <p className="mt-2 text-sm font-bold leading-6 text-slate-700">{review.summary}</p>
-                {review.insights ? <p className="mt-2 text-xs font-bold leading-5 text-violet-600">💡 {review.insights}</p> : null}
-                {review.next_steps ? <p className="mt-1 text-xs font-bold leading-5 text-sky-600">→ {review.next_steps}</p> : null}
+                <ReviewContent summary={review.summary} insights={review.insights} nextSteps={review.next_steps} className="mt-3" />
               </div>
             ))}
           </div>
@@ -1466,6 +1465,14 @@ function ReviewView({ data, projectId, onBack, onRefresh }: { data: ProjectData;
       ) : null}
     </div>
   );
+}
+
+function ReviewContent({ summary, insights, nextSteps, className = '' }: { summary: string; insights?: string | null; nextSteps?: string | null; className?: string }) {
+  const analysisAndNextSteps = [insights, nextSteps].filter(Boolean).join('\n');
+  return <div className={`space-y-4 text-sm font-bold leading-6 text-slate-700 ${className}`}>
+    <p className="whitespace-pre-line">{summary}</p>
+    {analysisAndNextSteps ? <p className="whitespace-pre-line border-t border-violet-100 pt-4 text-violet-700">{analysisAndNextSteps}</p> : null}
+  </div>;
 }
 
 // === REUSABLE COMPONENTS ===
