@@ -9,7 +9,8 @@ function isMissingFocusTable(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const details = error as { code?: string; message?: string };
   return details.code === '42P01' || details.code === 'PGRST205'
-    || details.message?.includes('space_weekly_reviews') === true;
+    || details.message?.includes('space_weekly_reviews') === true
+    || details.message?.includes('space_focus_') === true;
 }
 
 export async function POST(_request: NextRequest) {
@@ -26,6 +27,19 @@ export async function POST(_request: NextRequest) {
     if (projectsError) throw projectsError;
     const projectIds = (projects || []).map((project) => project.id);
     const projectNames = new Map((projects || []).map((project) => [project.id, project.name]));
+    const { data: focusPlan, error: focusPlanError } = await supabase
+      .from('space_focus_plans')
+      .select('id')
+      .eq('space_id', auth.spaceId)
+      .eq('week_start_date', weekStart)
+      .maybeSingle();
+    if (focusPlanError) throw focusPlanError;
+    const { data: focusItems, error: focusItemsError } = focusPlan
+      ? await supabase.from('space_focus_items').select('project_id,daily_minutes').eq('space_focus_plan_id', focusPlan.id)
+      : { data: [], error: null };
+    if (focusItemsError) throw focusItemsError;
+    const dailyTargetMinutes = (focusItems || []).reduce((sum, item) => sum + Number(item.daily_minutes || 0), 0);
+    const dailyPlanDescription = (focusItems || []).map((item) => `${projectNames.get(item.project_id) || '项目'} ${Number(item.daily_minutes || 0)} 分钟/天`).join('；');
     const { data: sessions, error: sessionsError } = projectIds.length
       ? await supabase.from('study_sessions').select('project_id,phase_id,study_date,duration_minutes,content,outcome_status').in('project_id', projectIds).gte('study_date', weekStart).lte('study_date', weekEnd).order('study_date')
       : { data: [], error: null };
@@ -38,8 +52,11 @@ export async function POST(_request: NextRequest) {
       projectName: '本周全部项目',
       projectGoal: '根据本周真实完成记录，回看整体投入、阻碍和下一步。',
       projectType: 'general',
+      reviewScope: 'weekly',
       periodStart: weekStart,
       periodEnd: weekEnd,
+      dailyTargetMinutes,
+      dailyPlanDescription,
       sessions: (sessions || []).map((session) => ({
         studyDate: session.study_date,
         durationMinutes: Number(session.duration_minutes || 0),
