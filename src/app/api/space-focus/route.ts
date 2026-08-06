@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { requireSpaceAuthResponse } from '@/lib/auth';
 import { getWeekEnd, getWeekStart, toDateKey } from '@/lib/date';
+import { deriveProjectStatus } from '@/lib/project-status';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 function isMissingFocusTables(error: unknown): boolean {
@@ -40,7 +41,6 @@ export async function GET() {
       .from('projects')
       .select('id,name,status,start_date,end_date')
       .eq('space_id', auth.spaceId)
-      .eq('status', 'active')
       .order('created_at', { ascending: false });
     if (projectsError) throw projectsError;
 
@@ -72,10 +72,15 @@ export async function GET() {
     if (itemsError) throw itemsError;
 
     const phaseList = phasesResult.data || [];
-    const projectsWithPhase = (projects || []).map((project) => ({
-      ...project,
-      current_phase: currentPhaseFor(project.id, phaseList, today),
-    }));
+    const focusedProjectIds = new Set((items || []).map((item) => item.project_id));
+    const projectsWithPhase = (projects || []).map((project) => {
+      const projectPhases = phaseList.filter((phase) => phase.project_id === project.id);
+      return {
+        ...project,
+        status: deriveProjectStatus(projectPhases, focusedProjectIds.has(project.id)),
+        current_phase: currentPhaseFor(project.id, phaseList, today),
+      };
+    });
     const projectById = new Map(projectsWithPhase.map((project) => [project.id, project]));
     const focusItems = (items || []).map((item) => ({ ...item, project: projectById.get(item.project_id) || null }));
     const sessionRows = (sessionsResult.data || []).map((session) => ({
@@ -136,7 +141,7 @@ export async function PUT(request: NextRequest) {
     const projectIds = Array.from(uniqueItems.keys());
     if (projectIds.length) {
       const { data: projects, error: projectsError } = await supabase
-        .from('projects').select('id').eq('space_id', auth.spaceId).eq('status', 'active').in('id', projectIds);
+        .from('projects').select('id').eq('space_id', auth.spaceId).in('id', projectIds);
       if (projectsError) throw projectsError;
       if ((projects || []).length !== projectIds.length) return Response.json({ error: '本周项目中包含无权访问或已结束的项目。' }, { status: 400 });
     }

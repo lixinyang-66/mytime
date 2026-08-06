@@ -163,6 +163,23 @@ export type SpaceWeeklyReview = {
   created_at?: string;
 };
 
+// === V2.4: Evidence-based project progress ===
+export type ProjectProgressSource = 'deepseek' | 'phase_completed' | 'insufficient_data';
+
+export type ProjectProgressAssessment = {
+  id: number;
+  project_id: number;
+  progress_percent: number;
+  summary: string | null;
+  source: ProjectProgressSource;
+  record_count: number;
+  last_session_at: string | null;
+  phase_signature: string;
+  assessed_at: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type Stats = {
   todayMinutes: number;
   weekMinutes: number;
@@ -182,6 +199,7 @@ export type SpaceBootstrap = {
   projects: ProjectSummary[];
   projectPhases: ProjectPhase[];
   moods: SpaceMood[];
+  progressAssessments: ProjectProgressAssessment[];
 };
 
 // === V2.0: Project-level bootstrap ===

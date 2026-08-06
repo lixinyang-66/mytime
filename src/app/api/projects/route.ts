@@ -2,18 +2,11 @@ import { NextRequest } from 'next/server';
 import { requireSpaceAuthResponse } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { classifyProjectWithLLM, generateAIPlanWithDiagnostics } from '@/lib/ai';
-import type { Difficulty, ProjectStatus, ProjectType } from '@/types';
+import type { Difficulty, ProjectType } from '@/types';
 
 type PhaseOverride = { name: string; start_date: string; end_date: string };
 const projectTypes: ProjectType[] = ['research', 'fitness', 'competition', 'exam', 'general'];
 const difficulties: Difficulty[] = ['easy', 'medium', 'hard'];
-
-function normalizeProjectStatus(initialStatusNote: string): ProjectStatus {
-  const note = initialStatusNote.replace(/[\s，。；;、]/g, '');
-  if (/^(已完成|完成|已结项|项目结束)$/.test(note) || /(项目已完成|项目完成|全部完成|项目已结项)/.test(note)) return 'completed';
-  if (/(暂缓|暂停|搁置|未开始|等待|延后)/.test(note)) return 'paused';
-  return 'active';
-}
 
 function normalizePhaseOverrides(value: unknown): PhaseOverride[] | null {
   if (!Array.isArray(value)) return null;
@@ -60,7 +53,6 @@ export async function POST(request: NextRequest) {
   const dailyStartTime = String(body.daily_start_time || '19:30');
   const dailyEndTime = String(body.daily_end_time || '23:30');
   const initialStatusNote = String(body.initial_status_note || '').trim().slice(0, 240);
-  const initialStatus = normalizeProjectStatus(initialStatusNote);
   const isPreview = Boolean(body.preview);
 
   if (!name || !startDate || !endDate || !goal) {
@@ -130,7 +122,8 @@ export async function POST(request: NextRequest) {
         plan_source: planSource,
         daily_start_time: dailyStartTime,
         daily_end_time: dailyEndTime,
-        status: initialStatus,
+        // 总项目状态不是由初始描述猜测；空间页会按“本周是否推进 + 是否完成全部阶段”实时计算。
+        status: 'active',
         initial_status_note: initialStatusNote || null,
       })
       .select('*')

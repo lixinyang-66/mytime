@@ -185,6 +185,70 @@ async function requestDeepSeek(
   }
 }
 
+export type ProjectProgressAssessmentInput = {
+  projectName: string;
+  projectGoal: string;
+  projectType: ProjectType;
+  projectSubtype?: string | null;
+  phases: Array<{ name: string; status: string }>;
+  sessions: Array<{ studyDate: string; durationMinutes: number; content: string; phaseName?: string | null }>;
+};
+
+export type AIProjectProgressAssessment = {
+  progressPercent: number;
+  summary: string;
+};
+
+function parseProjectProgressAssessment(text: string): AIProjectProgressAssessment | null {
+  const candidates = [text, text.match(/```(?:json)?\s*([\s\S]*?)```/)?.[1], text.match(/\{[\s\S]*\}/)?.[0]];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const parsed = JSON.parse(candidate.trim()) as Record<string, unknown>;
+      const rawProgress = Number(parsed.progress_percent ?? parsed.progressPercent);
+      const summary = String(parsed.summary || '').trim();
+      if (!Number.isFinite(rawProgress) || !summary) continue;
+      return { progressPercent: Math.round(Math.min(99, Math.max(0, rawProgress))), summary: summary.slice(0, 500) };
+    } catch {
+      // Continue through the possible JSON payloads.
+    }
+  }
+  return null;
+}
+
+/**
+ * 只根据真实专注记录与阶段状态评估项目推进，不把日历经过时间当作进度。
+ * 调用失败时显式返回 failure；调用方必须保留上一次可信评估，不能伪造本地百分比。
+ */
+export async function assessProjectProgressWithDiagnostics(
+  input: ProjectProgressAssessmentInput,
+): Promise<{ assessment?: AIProjectProgressAssessment; failure?: string }> {
+  const knowledgeContext = buildKnowledgeContext(
+    input.projectType,
+    `${input.projectName} ${input.projectGoal} ${input.projectSubtype || ''} ${input.phases.map((phase) => phase.name).join(' ')}`,
+  );
+  const phaseLines = input.phases.length
+    ? input.phases.map((phase) => `- ${phase.name}：${phase.status}`).join('\n')
+    : '暂无阶段信息。';
+  const sessionLines = input.sessions.length
+    ? input.sessions.map((session) => `- ${session.studyDate}｜${session.durationMinutes} 分钟｜${session.phaseName || '未关联阶段'}｜${session.content.slice(0, 220)}`).join('\n')
+    : '暂无专注记录。';
+  const result = await requestDeepSeek([
+    {
+      role: 'system',
+      content: `${knowledgeContext}\n\n你是 MyTime 的项目推进评估器。你只能根据用户真实保存的专注记录和阶段完成状态评估，不得根据项目日期、截止日期或“投入时长越多进度越高”这样的假设推断。记录中的可验证产出比时长更重要。`,
+    },
+    {
+      role: 'user',
+      content: `请评估项目的实际完成百分比。\n\n项目：${input.projectName}\n目标：${input.projectGoal}\n阶段状态：\n${phaseLines}\n\n真实专注记录：\n${sessionLines}\n\n规则：\n1. 只评估已经有证据支持的完成部分；无法从记录确认的工作不能计入。\n2. 未有全部阶段完成时，progress_percent 必须在 0 到 99 之间。\n3. 时长仅可作为辅助证据，不能单独决定百分比。\n4. summary 用一两句解释依据，并明确缺少什么证据。\n5. 严格返回 JSON：{"progress_percent": 0, "summary": "..."}`,
+    },
+  ], { temperature: 0.1, maxTokens: 520, json: true }, 'project-progress');
+  if (result.failure) return { failure: result.failure };
+  const content = result.data?.choices?.[0]?.message?.content || '';
+  const assessment = parseProjectProgressAssessment(content);
+  return assessment ? { assessment } : { failure: 'invalid_progress_response' };
+}
+
 export type ProjectClassification = {
   projectType: ProjectType;
   projectSubtype: string | null;
