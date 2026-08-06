@@ -1485,23 +1485,40 @@ function MetricCard({ label, value, tone }: { label: string; value: string; tone
 }
 
 function FocusMoodPileBackground() {
-  const moods = Array.from({ length: 25 }, (_, index) => {
-    const column = index % 5;
-    const row = Math.floor(index / 5);
-    const mood = MOODS[index % MOODS.length];
-    const style = {
-      left: `${10 + column * 20}%`,
-      animationDelay: `${row * 1.3 + (column % 3) * 0.12}s`,
-      '--mood-size': `clamp(5.8rem, ${17 + (index % 3) * 1.5}vw, 10rem)`,
-      '--mood-drift': `${((index * 29) % 72) - 36}px`,
-      '--mood-rotation': `${((index * 31) % 64) - 32}deg`,
-      '--pile-bottom': `${28 + row * 122}px`,
-    } as CSSProperties & Record<'--mood-size' | '--mood-drift' | '--mood-rotation' | '--pile-bottom', string>;
-    return { mood, index, style };
-  });
+  // 每一轮都是新的随机散点，而不是把表情预排成固定的竖列。
+  // 组件会在计时器运行时重新抽取一批位置，所以两轮掉落不会重合。
+  const [round, setRound] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setRound((current) => current + 1), 22000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const moods = useMemo(() => {
+    // 可复现的伪随机数让当前这一轮在组件重渲染时保持稳定，下一轮再换一组。
+    let seed = (0x9e3779b9 + round * 0x6d2b79f5) >>> 0;
+    const random = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+
+    return Array.from({ length: 32 }, (_, index) => {
+      const mood = MOODS[Math.floor(random() * MOODS.length)];
+      const style = {
+        // 用整张画布的百分比坐标，而非 column / row 网格。
+        left: `${(-6 + random() * 106).toFixed(2)}%`,
+        animationDelay: `${(random() * 10.5).toFixed(2)}s`,
+        '--mood-size': `clamp(6.5rem, ${(9.2 + random() * 3.8).toFixed(2)}vw, 11.5rem)`,
+        '--mood-drift': `${Math.round(-110 + random() * 220)}px`,
+        '--mood-rotation': `${Math.round(-38 + random() * 76)}deg`,
+        // 让落点从底部向上随机堆叠，形成不规则的铺满效果。
+        '--pile-bottom': `${Math.round(18 + random() * 620)}px`,
+      } as CSSProperties & Record<'--mood-size' | '--mood-drift' | '--mood-rotation' | '--pile-bottom', string>;
+      return { mood, index, style };
+    });
+  }, [round]);
 
   return <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-    {moods.map(({ mood, index, style }) => <img key={`${mood.key}-${index}`} src={mood.src} alt="" className="focus-mood-pile-item absolute top-[-6rem] rounded-full object-cover" style={style} />)}
+    {moods.map(({ mood, index, style }) => <img key={`${round}-${mood.key}-${index}`} src={mood.src} alt="" className="focus-mood-pile-item absolute top-[-8rem] rounded-full object-cover" style={style} />)}
   </div>;
 }
 
