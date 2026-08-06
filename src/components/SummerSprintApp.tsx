@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type TouchEvent } from 'react';
 import type { Space, SpaceMood, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty, ProjectStatus, ProjectType, SessionOutcome, SpaceFocusPlan, SpaceFocusItem, SpaceWeeklyReview } from '@/types';
 import { formatChineseDate, getWeekEnd, getWeekStart, minutesToText, toDateKey } from '@/lib/date';
 import { getMoodByKey, MOODS } from '@/lib/moods';
@@ -20,7 +20,7 @@ type View = 'space' | 'project';
 type SpaceMode = 'home' | 'focus';
 type ProjectMode = 'home' | 'gantt' | 'focus' | 'finish' | 'plan' | 'stats' | 'boards' | 'review';
 
-type RunningSession = { taskBoardId: number | null; phaseId: number | null; startAt: string; pausedMs: number };
+type RunningSession = { projectId: number; taskBoardId: number | null; phaseId: number | null; startAt: string; pausedMs: number };
 
 type SpaceData = { space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[] };
 
@@ -88,6 +88,8 @@ export default function MyTimeApp() {
   const [outcomeStatus, setOutcomeStatus] = useState<SessionOutcome>('progressed');
   const [saving, setSaving] = useState(false);
   const [recordFilter, setRecordFilter] = useState<number | 'all'>('all');
+  const [focusProjectOptions, setFocusProjectOptions] = useState<SpaceFocusProject[]>([]);
+  const [startedFromSpaceFocus, setStartedFromSpaceFocus] = useState(false);
 
   useEffect(() => {
     loadSpace();
@@ -152,16 +154,20 @@ export default function MyTimeApp() {
     const boardId = taskBoardId === undefined ? activeBoard?.id || project.taskBoards[0]?.id || null : taskBoardId;
     setProjectData(project);
     setSelectedProjectId(project.project.id);
-    setSession({ taskBoardId: boardId, phaseId: currentPhase?.id || null, startAt: new Date().toISOString(), pausedMs: 0 });
+    setSession({ projectId: project.project.id, taskBoardId: boardId, phaseId: currentPhase?.id || null, startAt: new Date().toISOString(), pausedMs: 0 });
     setPaused(false); setPauseStartedAt(null); setContent(''); setOutcomeStatus('progressed'); setMode('focus');
   }
 
   function startFocus(taskBoardId = suggestedBoardId) {
     if (!projectData) return;
+    setStartedFromSpaceFocus(false);
+    setFocusProjectOptions([]);
     beginFocus(projectData, taskBoardId);
   }
 
-  async function startSpaceFocus(projectId: number) {
+  async function startSpaceFocus(projectId: number, projectOptions: SpaceFocusProject[]) {
+    setStartedFromSpaceFocus(true);
+    setFocusProjectOptions(projectOptions);
     const data = await loadProject(projectId);
     if (data) beginFocus(data);
   }
@@ -185,7 +191,7 @@ export default function MyTimeApp() {
   }
 
   async function saveSession() {
-    if (!session || !selectedProjectId) return;
+    if (!session) return;
     if (!content.trim()) { alert('请填写这段时间你真正做了什么。'); return; }
     setSaving(true);
     const start = new Date(session.startAt);
@@ -194,7 +200,7 @@ export default function MyTimeApp() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        project_id: selectedProjectId,
+        project_id: session.projectId,
         study_date: toDateKey(start),
         start_time: start.toISOString(),
         end_time: end.toISOString(),
@@ -208,7 +214,13 @@ export default function MyTimeApp() {
     const payload = await response.json().catch(() => ({}));
     setSaving(false);
     if (!response.ok) { alert(payload.error || '保存失败，请稍后重试。'); return; }
-    setSession(null); setPaused(false); setPauseStartedAt(null); setMode('home');
+    setSession(null); setPaused(false); setPauseStartedAt(null);
+    if (startedFromSpaceFocus) {
+      setView('space'); setSpaceMode('focus'); setProjectData(null); setSelectedProjectId(null); setFocusProjectOptions([]);
+      await loadSpace();
+      return;
+    }
+    setMode('home');
     await refreshProject();
   }
 
@@ -221,7 +233,7 @@ export default function MyTimeApp() {
         {spaceMode === 'focus' ? <SpaceFocusView
           space={spaceData.space}
           onBack={() => setSpaceMode('home')}
-          onStartFocus={startSpaceFocus}
+            onStartFocus={startSpaceFocus}
         /> : <SpaceView
           space={spaceData.space}
           projects={spaceData.projects}
@@ -237,7 +249,14 @@ export default function MyTimeApp() {
   }
 
   if (view === 'project' && projectData) {
-    const sessionBoard = session ? projectData.taskBoards.find((b) => b.id === session.taskBoardId) : null;
+    const finishProjectOptions: SpaceFocusProject[] = focusProjectOptions.length ? focusProjectOptions : [{
+      id: projectData.project.id,
+      name: projectData.project.name,
+      status: projectData.project.status,
+      start_date: projectData.project.start_date,
+      end_date: projectData.project.end_date,
+      current_phase: projectData.phases.find((phase) => phase.id === session?.phaseId) || null,
+    }];
     return (
       <Shell>
         {mode === 'home' && (
@@ -251,16 +270,11 @@ export default function MyTimeApp() {
         )}
         {mode === 'gantt' && <GanttView data={projectData} onBack={() => setMode('home')} onRefresh={refreshProject} />}
         {mode === 'focus' && session && (
-          <FocusView
-            boards={activeBoards.length ? activeBoards : projectData.taskBoards}
-            session={session} board={sessionBoard} elapsedSeconds={elapsedSeconds}
-            paused={paused} onPause={togglePause} onFinish={goFinish}
-            onChangeBoard={(taskBoardId) => setSession({ ...session, taskBoardId })}
-          />
+          <FocusView elapsedSeconds={elapsedSeconds} paused={paused} onPause={togglePause} onFinish={goFinish} />
         )}
         {mode === 'finish' && session && (
-          <FinishView board={sessionBoard} elapsedSeconds={elapsedSeconds} content={content} outcome={outcomeStatus} saving={saving}
-            onContent={setContent} onOutcome={setOutcomeStatus} onBack={() => setMode('focus')} onSave={saveSession} />
+          <FinishView projects={finishProjectOptions} projectId={session.projectId} elapsedSeconds={elapsedSeconds} content={content} saving={saving}
+            onContent={setContent} onProjectChange={(projectId) => { const project = finishProjectOptions.find((item) => item.id === projectId); setSession({ ...session, projectId, taskBoardId: null, phaseId: project?.current_phase?.id || null }); }} onBack={() => setMode('focus')} onSave={saveSession} />
         )}
         {mode === 'plan' && <PlanView data={projectData} projectId={selectedProjectId!} onBack={() => setMode('home')} onBoards={() => setMode('boards')} onSaved={async () => { await refreshProject(); setMode('home'); }} />}
         {mode === 'boards' && <BoardsView boards={projectData.taskBoards} projectId={selectedProjectId!} onBack={() => setMode('home')} onSaved={refreshProject} />}
@@ -445,22 +459,23 @@ function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onFoc
 
   return (
     <div className="rounded-[2.5rem] bg-[#fff7ea] p-5 shadow-soft sm:p-8">
-      <header className="flex items-center justify-between gap-4">
-        <div title={space.name}>
-          <p className="text-sm font-black text-orange-700">MyTime</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">我的空间</h1>
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+          <div title={space.name}>
+            <p className="text-sm font-black text-orange-700">MyTime</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">我的空间</h1>
+          </div>
+          <nav className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white p-1.5 shadow-sm" aria-label="空间导航">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff1d9] text-orange-700" aria-label="我的空间">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10Z" strokeLinejoin="round" /></svg>
+            </span>
+            <button type="button" onClick={onFocus} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition hover:bg-[#fff1d9] hover:text-orange-700" aria-label="专注">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+          </nav>
         </div>
         <button onClick={onLogout} className="shrink-0 rounded-full bg-white px-4 py-2.5 text-xs font-black text-slate-500 shadow-sm">退出空间</button>
       </header>
-
-      <nav className="mt-4 inline-flex items-center gap-1 rounded-full bg-white p-1.5 shadow-sm" aria-label="空间导航">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff1d9] text-orange-700" aria-label="我的空间">
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10Z" strokeLinejoin="round" /></svg>
-        </span>
-        <button type="button" onClick={onFocus} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition hover:bg-[#fff1d9] hover:text-orange-700" aria-label="专注">
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </button>
-      </nav>
 
       <section className="mt-6 rounded-[2rem] bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -578,7 +593,7 @@ function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onFoc
   );
 }
 
-function SpaceFocusView({ space, onBack, onStartFocus }: { space: Space; onBack: () => void; onStartFocus: (projectId: number) => Promise<void> }) {
+function SpaceFocusView({ space, onBack, onStartFocus }: { space: Space; onBack: () => void; onStartFocus: (projectId: number, projectOptions: SpaceFocusProject[]) => Promise<void> }) {
   const [data, setData] = useState<SpaceFocusData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -666,15 +681,15 @@ function SpaceFocusView({ space, onBack, onStartFocus }: { space: Space; onBack:
 
   return (
     <div className="rounded-[2.5rem] bg-[#fff7ea] p-5 shadow-soft sm:p-8">
-      <header className="flex items-center justify-between gap-4">
-        <div title={space.name}><p className="text-sm font-black text-orange-700">MyTime</p><h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">我的空间</h1></div>
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4"><div title={space.name}><p className="text-sm font-black text-orange-700">MyTime</p><h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">我的空间</h1></div>
+          <nav className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white p-1.5 shadow-sm" aria-label="空间导航">
+            <button type="button" onClick={onBack} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition hover:bg-[#fff1d9] hover:text-orange-700" aria-label="我的空间"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10Z" strokeLinejoin="round" /></svg></button>
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff1d9] text-orange-700" aria-label="专注"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
+          </nav>
+        </div>
         <button type="button" onClick={onBack} className="shrink-0 rounded-full bg-white px-4 py-2.5 text-xs font-black text-slate-500 shadow-sm">返回空间</button>
       </header>
-
-      <nav className="mt-4 inline-flex items-center gap-1 rounded-full bg-white p-1.5 shadow-sm" aria-label="空间导航">
-        <button type="button" onClick={onBack} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition hover:bg-[#fff1d9] hover:text-orange-700" aria-label="我的空间"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10Z" strokeLinejoin="round" /></svg></button>
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff1d9] text-orange-700" aria-label="专注"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
-      </nav>
 
       {loading ? <div className="mt-6 rounded-[2rem] bg-white p-8 text-center font-bold text-slate-500">正在读取本周专注安排…</div> : null}
       {error ? <p className="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{error}</p> : null}
@@ -695,8 +710,8 @@ function SpaceFocusView({ space, onBack, onStartFocus }: { space: Space; onBack:
         </section>
 
         <section className="mt-5 flex flex-col items-start justify-between gap-5 rounded-[2rem] bg-[#fff0df] p-6 sm:flex-row sm:items-center">
-          <p className="font-cute max-w-xl text-2xl font-black leading-snug text-ink sm:text-3xl">“{quote}”</p>
-          <button type="button" onClick={() => firstProject && void onStartFocus(firstProject.id)} disabled={!firstProject} className="shrink-0 rounded-[1.5rem] bg-[#ffad45] px-8 py-6 text-xl font-black text-white shadow-[0_16px_28px_rgba(239,143,45,0.3)] transition hover:bg-[#f5a136] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45">开始专注</button>
+          <p className="font-cute max-w-xl text-lg font-black leading-relaxed text-ink sm:text-xl"><span className="font-quote">“</span>{quote}<span className="font-quote">”</span></p>
+          <button type="button" onClick={() => firstProject && void onStartFocus(firstProject.id, selectedItems.map((item) => item.project).filter(Boolean) as SpaceFocusProject[])} disabled={!firstProject} className="shrink-0 rounded-[1.75rem] bg-[#ffad45] px-10 py-7 text-2xl font-black text-white shadow-[0_16px_28px_rgba(239,143,45,0.3)] transition hover:bg-[#f5a136] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 sm:px-12 sm:text-3xl">开始专注</button>
         </section>
 
         <section className="mt-5 rounded-[2rem] bg-white p-5 shadow-sm sm:p-6"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-black text-violet-700">AI 复盘</p><h2 className="mt-1 text-xl font-black">本周整体完成情况</h2></div><button type="button" onClick={() => void createWeeklyReview()} disabled={reviewSaving} className="rounded-full bg-[#eee7ff] px-4 py-2.5 text-sm font-black text-violet-700 disabled:opacity-55">{reviewSaving ? '生成中…' : data.review ? '重新复盘' : '生成复盘'}</button></div>{data.review ? <div className="mt-4 space-y-3 text-sm font-bold leading-7 text-slate-600"><p>{data.review.summary}</p>{data.review.insights ? <p className="rounded-2xl bg-[#faf8ff] px-4 py-3">{data.review.insights}</p> : null}{data.review.next_steps ? <p className="rounded-2xl bg-[#faf8ff] px-4 py-3">{data.review.next_steps}</p> : null}</div> : <p className="mt-4 text-sm font-bold text-slate-500">完成几次专注后，再从这一周的真实记录里回看。</p>}</section>
@@ -1460,57 +1475,66 @@ function MetricCard({ label, value, tone }: { label: string; value: string; tone
   return <div className={`rounded-[1.6rem] ${tone} p-4`}><p className="text-sm font-bold text-slate-500">{label}</p><p className="mt-2 text-2xl font-black">{value}</p></div>;
 }
 
-function FocusView({ boards, session, board, elapsedSeconds, paused, onPause, onFinish, onChangeBoard }: {
-  boards: TaskBoard[]; session: RunningSession; board: TaskBoard | null | undefined;
-  elapsedSeconds: number; paused: boolean; onPause: () => void; onFinish: () => void; onChangeBoard: (id: number) => void;
+function FocusMoodPileBackground() {
+  const moods = Array.from({ length: 25 }, (_, index) => {
+    const column = index % 5;
+    const row = Math.floor(index / 5);
+    const mood = MOODS[index % MOODS.length];
+    const style = {
+      left: `${10 + column * 20}%`,
+      animationDelay: `${row * 1.3 + (column % 3) * 0.12}s`,
+      '--mood-size': `clamp(5.8rem, ${17 + (index % 3) * 1.5}vw, 10rem)`,
+      '--mood-drift': `${((index * 29) % 72) - 36}px`,
+      '--mood-rotation': `${((index * 31) % 64) - 32}deg`,
+      '--pile-bottom': `${28 + row * 122}px`,
+    } as CSSProperties & Record<'--mood-size' | '--mood-drift' | '--mood-rotation' | '--pile-bottom', string>;
+    return { mood, index, style };
+  });
+
+  return <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+    {moods.map(({ mood, index, style }) => <img key={`${mood.key}-${index}`} src={mood.src} alt="" className="focus-mood-pile-item absolute top-[-6rem] rounded-full object-cover" style={style} />)}
+  </div>;
+}
+
+function FocusView({ elapsedSeconds, paused, onPause, onFinish }: {
+  elapsedSeconds: number; paused: boolean; onPause: () => void; onFinish: () => void;
 }) {
+  const today = new Date();
+  const dateLabel = `${today.getMonth() + 1}月${today.getDate()}日 · 星期${['日', '一', '二', '三', '四', '五', '六'][today.getDay()]}`;
   return (
-    <div className="flex min-h-[calc(100vh-3rem)] flex-col justify-center space-y-8">
-      <div className="text-center">
-        <p className="text-sm font-black text-orange-700">正在感知这一段时间</p>
-        <h1 className="mt-4 text-7xl font-black tracking-tight sm:text-8xl">{formatSeconds(elapsedSeconds)}</h1>
-        <p className="mt-4 text-sm font-bold text-slate-500">时间正在流逝，请把它交给真正重要的事</p>
-      </div>
-      <div className="rounded-[2rem] bg-white/85 p-5 text-center shadow-soft">
-        <p className="text-sm font-bold text-slate-500">本次行动：{board?.name || '未关联行动项'}</p>
-        {boards.length ? <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {boards.map((item) => (
-            <button key={item.id} onClick={() => onChangeBoard(item.id)} className={`rounded-2xl px-3 py-3 text-sm font-black ${item.id === session.taskBoardId ? 'bg-honey text-orange-900 ring-2 ring-orange-200' : 'bg-slate-50 text-slate-500'}`}>{item.name}</button>
-          ))}
-        </div> : null}
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <button onClick={onPause} className="rounded-[1.5rem] bg-white px-6 py-5 text-lg font-black shadow-soft">{paused ? '继续' : '暂停'}</button>
-        <button onClick={onFinish} className="rounded-[1.5rem] bg-ink px-6 py-5 text-lg font-black text-white shadow-soft">结束并记录</button>
-      </div>
+    <div className="focus-mood-pile-scene relative grid min-h-[calc(100vh-3rem)] place-items-center overflow-hidden rounded-[3.5rem] px-5 py-20 shadow-soft">
+      <FocusMoodPileBackground />
+      <section className="relative z-10 w-full max-w-[34rem] rounded-[2.75rem] border-[3px] border-white bg-white/95 px-6 py-16 text-center shadow-[0_28px_70px_rgba(43,55,85,0.15)] backdrop-blur-sm sm:px-12 sm:py-20">
+        <p className="text-sm font-bold tracking-[0.12em] text-slate-500">{dateLabel}</p>
+        <h1 className="mt-4 text-6xl font-black tracking-tight sm:text-8xl">{formatSeconds(elapsedSeconds)}</h1>
+        <div className="mt-14 grid grid-cols-2 gap-3">
+          <button onClick={onPause} className="rounded-[1.5rem] bg-[#fff7ed] px-6 py-5 text-lg font-black shadow-sm">{paused ? '继续' : '暂停'}</button>
+          <button onClick={onFinish} className="rounded-[1.5rem] bg-ink px-6 py-5 text-lg font-black text-white shadow-soft">结束并记录</button>
+        </div>
+      </section>
     </div>
   );
 }
 
-function FinishView({ board, elapsedSeconds, content, outcome, saving, onContent, onOutcome, onBack, onSave }: {
-  board: TaskBoard | null | undefined; elapsedSeconds: number; content: string; outcome: SessionOutcome; saving: boolean;
-  onContent: (v: string) => void; onOutcome: (v: SessionOutcome) => void; onBack: () => void; onSave: () => void;
+function FinishView({ projects, projectId, elapsedSeconds, content, saving, onContent, onProjectChange, onBack, onSave }: {
+  projects: SpaceFocusProject[]; projectId: number; elapsedSeconds: number; content: string; saving: boolean;
+  onContent: (v: string) => void; onProjectChange: (projectId: number) => void; onBack: () => void; onSave: () => void;
 }) {
   return (
     <div className="space-y-5 pt-8">
       <button onClick={onBack} className="rounded-full bg-white/80 px-4 py-2 text-sm font-bold text-slate-600">返回计时</button>
       <section className="rounded-[2rem] bg-white/90 p-6 shadow-soft">
-        <p className="text-sm font-bold text-slate-500">这一段时间过去了</p>
-        <h1 className="mt-2 text-3xl font-black">{board?.name || '本次专注'} · {minutesToText(Math.round(elapsedSeconds / 60))}</h1>
+        <h1 className="text-3xl font-black">本次专注 · {minutesToText(Math.round(elapsedSeconds / 60))}</h1>
         <label className="mt-6 block">
+          <span className="mb-2 block text-sm font-black text-slate-700">这段时间用在哪个项目？</span>
+          <select value={projectId} onChange={(event) => onProjectChange(Number(event.target.value))} className="w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 text-base font-black outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100">
+            {projects.map((project) => <option key={project.id} value={project.id}>{project.name}{project.current_phase ? ` · ${project.current_phase.name}` : ''}</option>)}
+          </select>
+        </label>
+        <label className="mt-5 block">
           <span className="mb-2 block text-sm font-black text-slate-700">记录这段时间你真正做了什么 *</span>
           <textarea value={content} onChange={(e) => onContent(e.target.value)} rows={5} placeholder="例如：修改论文第三章 / 完成考公课程第五讲 / 浏览20个秋招岗位" className="w-full resize-none rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
         </label>
-        <div className="mt-5 grid grid-cols-3 gap-2">
-          {([
-            ['progressed', '已推进'],
-            ['completed', '已完成'],
-            ['blocked', '被卡住'],
-          ] as const).map(([value, label]) => (
-            <button key={value} type="button" onClick={() => onOutcome(value)} className={`rounded-2xl px-3 py-3 text-sm font-black transition ${outcome === value ? 'bg-honey text-orange-900 ring-2 ring-orange-200' : 'bg-cream text-slate-500'}`}>{label}</button>
-          ))}
-        </div>
-        <p className="mt-3 text-xs font-bold leading-6 text-slate-500">时间长短不是目的。请诚实记录这段时间被交给了什么。</p>
         <button onClick={onSave} disabled={saving || !content.trim()} className="mt-5 w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{saving ? '正在保存...' : '保存记录'}</button>
       </section>
     </div>
