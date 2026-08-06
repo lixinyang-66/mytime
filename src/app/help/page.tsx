@@ -1,10 +1,10 @@
 const steps = [
-  ['01', '建立空间', '在登录页创建一个只属于你的空间，并设置空间密码。'],
-  ['02', '新建项目', '写清项目名称、当前状态、目标和截止日期。AI 会结合系统知识库生成阶段计划。'],
-  ['03', '确认计划图', '检查阶段和日期；需要时可人工编辑，也可以重新让 AI 生成。'],
-  ['04', '配置本周专注', '选择本周要推进的项目，为每个项目设置每天投入的时间。'],
-  ['05', '专注并留下记录', '每次结束专注都选择对应项目，并写下这段时间具体做了什么。'],
-  ['06', '复盘与调整', '项目与本周的记录会汇总为复盘依据，帮助你决定下一步。'],
+  ['01', '建立空间', '在登录页创建一个只属于你的空间，并设置密码。空间里的项目、专注记录和复盘都只属于你。'],
+  ['02', '新建项目', '写下项目名称、初始状态、目标和截止日期。每一件想完成的事，都可以成为一个可推进的项目。'],
+  ['03', '确认计划图', 'AI 会结合系统知识库生成阶段计划。检查阶段与日期后，你仍可按自己的节奏人工编辑或重新生成。'],
+  ['04', '配置本周专注', '选择这一周要推进的项目，为每个项目分配每天愿意投入的时间，让计划与真实生活相互配合。'],
+  ['05', '专注并留下记录', '开始一段专注；结束时选择对应项目，并写下这段时间具体完成了什么。真实记录比完美记录更重要。'],
+  ['06', '复盘与调整', '项目记录和本周投入会沉淀为复盘依据。看见已经完成的部分，再决定下一步怎样继续推进。'],
 ];
 
 function ScreenFrame({ title, children }: { title: string; children: React.ReactNode }) {
@@ -50,12 +50,10 @@ export default function HelpPage() {
   return <main className="min-h-screen bg-[linear-gradient(135deg,#fff7e9_0%,#fffaf4_48%,#eef7ff_100%)] px-5 py-8 text-ink sm:px-8 sm:py-12">
     <div className="mx-auto max-w-6xl">
       <header className="flex items-center justify-between gap-4"><a href="/login" className="rounded-full bg-white/90 px-4 py-2 text-sm font-black text-slate-600 shadow-sm">← 返回登录</a><span className="rounded-full bg-[#fff0d7] px-4 py-2 text-xs font-black text-[#a15b30]">MyTime 帮助手册</span></header>
-      <section className="mt-8 rounded-[2.5rem] bg-white/85 p-7 shadow-soft ring-1 ring-white/80 sm:p-11"><p className="text-sm font-black text-[#e87832]">从一个目标，到每一天真实的投入</p><h1 className="mt-3 text-4xl font-black tracking-tight sm:text-6xl">欢迎来到 MyTime</h1><p className="mt-5 max-w-2xl text-base font-bold leading-8 text-slate-600">MyTime 用两个维度陪你推进目标：项目维度负责“要做什么、走到哪里”，每周专注维度负责“这周实际投入了什么”。下面用一组示例数据，带你走完一次使用流程。</p></section>
-      <section className="mt-10"><p className="text-sm font-black text-[#e87832]">一、6 步开始使用</p><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{steps.map(([number, title, text]) => <article key={number} className="rounded-3xl bg-white/85 p-5 shadow-sm ring-1 ring-white"><p className="text-sm font-black text-[#f09a3b]">{number}</p><h2 className="mt-2 text-xl font-black">{title}</h2><p className="mt-2 text-sm font-bold leading-6 text-slate-500">{text}</p></article>)}</div></section>
-      <section className="mt-12"><p className="text-sm font-black text-[#e87832]">二、示例数据：论文项目的一周</p><h2 className="mt-2 text-3xl font-black">把计划、投入和记录连在一起</h2><div className="mt-6 grid items-start gap-6 lg:grid-cols-3"><ProjectExample /><FocusExample /><RecordExample /></div></section>
-      <section className="mt-12 grid gap-5 md:grid-cols-2"><article className="rounded-[2rem] bg-[#fff0d8] p-7"><p className="text-sm font-black text-[#a15b30]">项目状态如何出现？</p><h2 className="mt-2 text-2xl font-black">不是随机标签</h2><p className="mt-3 text-sm font-bold leading-7 text-slate-600">已完成：所有阶段已完成。进行中：本周专注计划选择了该项目。暂缓：项目尚未完成，但本周没有安排投入。</p></article><article className="rounded-[2rem] bg-[#eee7fb] p-7"><p className="text-sm font-black text-[#7650bc]">AI 如何参与？</p><h2 className="mt-2 text-2xl font-black">先用知识库，再生成建议</h2><p className="mt-3 text-sm font-bold leading-7 text-slate-600">AI 生成计划会先检索系统知识库；专注记录会作为项目进度和每周复盘的依据。没有足够知识库上下文或调用失败时，系统会明确标出本地备用计划。</p></article></section>
-      <section className="mt-12 rounded-[2.3rem] bg-[#283044] p-7 text-white sm:p-10"><p className="text-sm font-black text-[#ffd27d]">三个小提醒</p><ol className="mt-4 grid gap-4 text-sm font-bold leading-7 sm:grid-cols-3"><li>每次专注结束都写下“具体做了什么”，一句也可以，但要真实。</li><li>周计划不是日程表：先安排可重复投入的时段，再分配到项目。</li><li>计划可以改。人工编辑或 AI 再生成后，新的阶段日期会同步到项目图。</li></ol></section>
-      <footer className="py-10 text-center text-xs font-bold text-slate-400">MyTime 帮助手册 · 示例仅用于说明功能，不会写入你的空间。</footer>
+      <section className="mt-8 rounded-[2.5rem] bg-white/85 p-7 shadow-soft ring-1 ring-white/80 sm:p-11"><p className="text-sm font-black text-[#e87832]">感知时间｜Feeling Your Time</p><h1 className="mt-3 text-4xl font-black tracking-tight sm:text-6xl">欢迎来到 MyTime</h1><p className="mt-5 max-w-3xl text-base font-bold leading-8 text-slate-600">MyTime 是一个把“想做”变成“正在发生”的个人时间管理系统。把每一件想完成的事，变成一个值得认真推进的项目；借鉴项目管理的思路，用 AI 帮你生成可执行的计划，记录每一次真实投入，并陪你复盘、调整。</p></section>
+      <section className="mt-10"><p className="text-sm font-black text-[#e87832]">一、六步开始使用</p><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{steps.map(([number, title, text]) => <article key={number} className="rounded-3xl bg-white/85 p-5 shadow-sm ring-1 ring-white"><p className="text-sm font-black text-[#f09a3b]">{number}</p><h2 className="mt-2 text-xl font-black">{title}</h2><p className="mt-2 text-sm font-bold leading-6 text-slate-500">{text}</p></article>)}</div></section>
+      <section className="mt-12"><p className="text-sm font-black text-[#e87832]">二、示例</p><h2 className="mt-2 text-3xl font-black">一个项目，从计划到真实投入</h2><div className="mt-6 grid items-start gap-6 lg:grid-cols-3"><ProjectExample /><FocusExample /><RecordExample /></div></section>
+      <section className="mt-12"><p className="text-sm font-black text-[#e87832]">三、AI计划与复盘</p><div className="mt-4 grid gap-5 md:grid-cols-2"><article className="rounded-[2rem] bg-[#fff0d8] p-7"><h2 className="text-2xl font-black">从目标到计划</h2><p className="mt-3 text-sm font-bold leading-7 text-slate-600">创建项目时，AI 会先参考系统知识库中的项目管理方法和优秀计划案例，再结合你的项目目标、初始状态与期限，生成可继续编辑的阶段计划。它提供起点，计划始终由你确认。</p></article><article className="rounded-[2rem] bg-[#eee7fb] p-7"><h2 className="text-2xl font-black">从记录到复盘</h2><p className="mt-3 text-sm font-bold leading-7 text-slate-600">每次专注留下的项目和具体内容，会成为项目进度与本周复盘的依据。AI 帮你整理已经发生的投入、看见持续的变化，并为下一步调整提供参考。</p></article></div></section>
     </div>
   </main>;
 }

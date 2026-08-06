@@ -97,12 +97,12 @@ select {
 
   38%, 84% {
     opacity: 0.94;
-    transform: translate3d(var(--mood-drift), calc(100svh - var(--pile-bottom)), 0) rotate(var(--mood-rotation));
+    transform: translate3d(var(--mood-drift), var(--mood-target-y), 0) rotate(var(--mood-rotation));
   }
 
   91% {
     opacity: 0;
-    transform: translate3d(var(--mood-drift), calc(100svh - var(--pile-bottom)), 0) rotate(var(--mood-rotation));
+    transform: translate3d(var(--mood-drift), var(--mood-target-y), 0) rotate(var(--mood-rotation));
   }
 
   100% {
