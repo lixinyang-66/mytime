@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type TouchEvent } from 'react';
-import type { Space, SpaceMood, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty, ProjectStatus, ProjectType, SessionOutcome, SpaceFocusPlan, SpaceFocusItem, SpaceWeeklyReview } from '@/types';
+import type { Space, SpaceMood, ProjectSummary, Project, ProjectPhase, TaskBoard, TaskKind, WeeklyPlan, WeeklyPlanItem, StudySession, Review, Difficulty, ProjectStatus, ProjectType, SessionOutcome, SpaceFocusPlan, SpaceFocusItem, SpaceWeeklyReview, ProjectProgressAssessment } from '@/types';
 import { formatChineseDate, getWeekEnd, getWeekStart, minutesToText, toDateKey } from '@/lib/date';
 import { getMoodByKey, MOODS } from '@/lib/moods';
 import MoodRainLoader from '@/components/MoodRainLoader';
@@ -22,7 +22,7 @@ type ProjectMode = 'home' | 'gantt' | 'focus' | 'finish' | 'plan' | 'stats' | 'b
 
 type RunningSession = { projectId: number; taskBoardId: number | null; phaseId: number | null; startAt: string; pausedMs: number };
 
-type SpaceData = { space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[] };
+type SpaceData = { space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[]; progressAssessments: ProjectProgressAssessment[] };
 
 type ProjectData = {
   project: Project;
@@ -104,6 +104,15 @@ export default function MyTimeApp() {
     setLoading(false);
     if (!response.ok) { setError(payload.error || '读取空间数据失败。'); return; }
     setSpaceData(payload);
+    // 仅当新增记录或阶段状态变化时，服务端才会重新调用 DeepSeek；否则直接复用已保存评估。
+    void refreshProjectProgress();
+  }
+
+  async function refreshProjectProgress() {
+    const response = await fetch('/api/project-progress', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !Array.isArray(payload.assessments)) return;
+    setSpaceData((current) => current ? { ...current, progressAssessments: payload.assessments } : current);
   }
 
   async function loadProject(projectId: number) {
@@ -232,13 +241,14 @@ export default function MyTimeApp() {
       <Shell>
         {spaceMode === 'focus' ? <SpaceFocusView
           space={spaceData.space}
-          onBack={() => setSpaceMode('home')}
+          onBack={() => { setSpaceMode('home'); void loadSpace(); }}
             onStartFocus={startSpaceFocus}
         /> : <SpaceView
           space={spaceData.space}
           projects={spaceData.projects}
           projectPhases={spaceData.projectPhases}
           moods={spaceData.moods}
+          progressAssessments={spaceData.progressAssessments}
           onOpenProject={async (id) => { await loadProject(id); }}
           onFocus={() => setSpaceMode('focus')}
           onRefresh={loadSpace}
@@ -302,8 +312,8 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void 
 }
 
 // === SPACE VIEW ===
-function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onFocus, onRefresh, onLogout }: {
-  space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[]; onOpenProject: (id: number) => Promise<void>; onFocus: () => void; onRefresh: () => void; onLogout: () => void;
+function SpaceView({ space, projects, projectPhases, moods, progressAssessments, onOpenProject, onFocus, onRefresh, onLogout }: {
+  space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[]; progressAssessments: ProjectProgressAssessment[]; onOpenProject: (id: number) => Promise<void>; onFocus: () => void; onRefresh: () => void; onLogout: () => void;
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
@@ -584,6 +594,7 @@ function SpaceView({ space, projects, projectPhases, moods, onOpenProject, onFoc
         <SpaceGanttOverview
           projects={projects}
           phases={projectPhases}
+          progressAssessments={progressAssessments}
           deletingProjectId={deletingProjectId}
           onOpenProject={onOpenProject}
           onDeleteProject={deleteProject}
@@ -809,9 +820,10 @@ function projectStatusMeta(status: ProjectStatus) {
   return { label: '进行中', className: 'bg-[#E1F4E8] text-[#417058]' };
 }
 
-function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject, onDeleteProject }: {
+function SpaceGanttOverview({ projects, phases, progressAssessments, deletingProjectId, onOpenProject, onDeleteProject }: {
   projects: ProjectSummary[];
   phases: ProjectPhase[];
+  progressAssessments: ProjectProgressAssessment[];
   deletingProjectId: number | null;
   onOpenProject: (id: number) => Promise<void>;
   onDeleteProject: (project: ProjectSummary) => void;
@@ -837,6 +849,7 @@ function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject
     card: 'bg-[linear-gradient(135deg,#FFFFFF_0%,#FFF8ED_56%,#EEF8FF_100%)] ring-1 ring-[#F3E3D1] shadow-[0_12px_30px_rgba(190,145,91,0.10)]',
     track: 'bg-[linear-gradient(90deg,#FFF0DB_0%,#FFF8E7_46%,#EAF6FF_100%)]',
   };
+  const assessmentByProject = new Map(progressAssessments.map((assessment) => [assessment.project_id, assessment]));
 
   function position(date: string) {
     return Math.min(100, Math.max(0, ((new Date(`${date}T00:00:00`).getTime() - new Date(`${rangeStart}T00:00:00`).getTime()) / 86400000 / rangeDays) * 100));
@@ -856,12 +869,8 @@ function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject
       <div className="mt-5 space-y-4">
         {timelineProjects.map((project, projectIndex) => {
           const projectPhaseList = phases.filter((phase) => phase.project_id === project.id);
-          const projectStartMs = Date.parse(`${project.start_date}T00:00:00`);
-          const projectEndMs = Date.parse(`${project.end_date}T00:00:00`);
-          const todayMs = Date.parse(`${today}T00:00:00`);
-          const progress = Number.isNaN(projectStartMs) || Number.isNaN(projectEndMs) || projectEndMs <= projectStartMs
-            ? 0
-            : Math.round(Math.min(100, Math.max(0, ((todayMs - projectStartMs) / (projectEndMs - projectStartMs)) * 100)));
+          const assessment = assessmentByProject.get(project.id);
+          const progress = assessment ? assessment.progress_percent : 0;
           const status = projectStatusMeta(project.status);
           const palette = projectPalette;
           const sheepPosition = progress;
@@ -871,11 +880,11 @@ function SpaceGanttOverview({ projects, phases, deletingProjectId, onOpenProject
               <div className="mb-1.5 flex items-center justify-between gap-3 pt-3">
                 <div className="flex min-w-0 items-center gap-2"><span className="truncate text-sm font-black text-slate-700">{project.name}</span><span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-black ${status.className}`}>{status.label}</span></div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <div className="relative h-3 w-20 rounded-full bg-[#FFF6E8] ring-1 ring-[#F0D8BA] sm:w-32 lg:w-72" aria-label={`项目计划时间进度 ${progress}%`}>
+                  <div className="relative h-3 w-20 rounded-full bg-[#FFF6E8] ring-1 ring-[#F0D8BA] sm:w-32 lg:w-72" title={assessment?.summary || '等待第一条专注记录后，由 AI 根据真实产出评估。'} aria-label={assessment ? `AI 评估的项目实际进度 ${progress}%` : '项目实际进度等待评估'}>
                     <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${progress}%`, backgroundImage: 'repeating-linear-gradient(135deg, #283044 0 5px, #FFF9F0 5px 10px)' }} />
                     <span className="absolute -top-5 z-20 -translate-x-1/2 text-base leading-none" style={{ left: `${sheepPosition}%` }} aria-hidden="true"><span className="block" style={{ transform: 'scaleX(-1)' }}>🐏</span></span>
                   </div>
-                  <span className="text-xs font-bold text-slate-500">{progress}%</span>
+                  <span className="text-xs font-bold text-slate-500">{assessment ? `${progress}%` : '待评估'}</span>
                 </div>
               </div>
               <div className={`relative ${projectIndex === 0 ? 'pt-5' : ''}`}>
