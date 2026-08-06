@@ -119,21 +119,31 @@ export async function POST(request: NextRequest) {
     const completionRate = projectSessions.length
       ? Math.round((projectSessions.filter((item) => item.outcome_status === 'completed').length / projectSessions.length) * 100)
       : 0;
-    const { data: savedReview, error: saveError } = await supabase
+    const reviewPayload = {
+      project_id: projectId,
+      review_type: 'weekly',
+      period_start: periodStart,
+      period_end: periodEnd,
+      summary: review.summary,
+      insights: review.insights,
+      next_steps: review.nextSteps || null,
+      total_minutes: totalMinutes,
+      completion_rate: completionRate,
+    };
+    const { data: existingReview, error: existingReviewError } = await supabase
       .from('reviews')
-      .insert({
-        project_id: projectId,
-        review_type: 'weekly',
-        period_start: periodStart,
-        period_end: periodEnd,
-        summary: review.summary,
-        insights: review.insights,
-        next_steps: review.nextSteps,
-        total_minutes: totalMinutes,
-        completion_rate: completionRate,
-      })
-      .select('*')
-      .single();
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('review_type', 'weekly')
+      .eq('period_start', periodStart)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingReviewError) throw existingReviewError;
+
+    const { data: savedReview, error: saveError } = existingReview
+      ? await supabase.from('reviews').update(reviewPayload).eq('id', existingReview.id).select('*').single()
+      : await supabase.from('reviews').insert(reviewPayload).select('*').single();
     if (saveError) throw saveError;
 
     return Response.json(savedReview);

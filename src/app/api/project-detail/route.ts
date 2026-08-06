@@ -77,6 +77,7 @@ export async function GET(request: NextRequest) {
       .from('reviews')
       .select('*')
       .eq('project_id', projectId)
+      .order('period_start', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(10);
 
@@ -95,7 +96,9 @@ export async function GET(request: NextRequest) {
       currentPlan: planWithoutItems,
       currentPlanItems,
       recentSessions: customRecentSessions,
-      recentReviews: recentReviews || [],
+      recentReviews: (recentReviews || []).filter((review, index, reviews) =>
+        reviews.findIndex((candidate) => candidate.review_type === review.review_type && candidate.period_start === review.period_start) === index,
+      ),
       stats: buildStats(customSessions, currentPlanItems, {
         trendStartDate: project.start_date,
         trendEndDate: project.end_date,

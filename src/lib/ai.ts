@@ -474,7 +474,7 @@ export type PersonalizedReviewInput = {
 export type PersonalizedReview = {
   summary: string;
   insights: string;
-  nextSteps: string;
+  nextSteps?: string;
 };
 
 function buildDailyActualLines(input: PersonalizedReviewInput): string {
@@ -498,6 +498,33 @@ function buildDailyActualLines(input: PersonalizedReviewInput): string {
 }
 
 function buildReviewPrompt(input: PersonalizedReviewInput): string {
+  const scopeLabel = input.reviewScope === 'weekly' ? '空间整体周复盘' : `项目「${input.projectName}」周复盘`;
+  const scopeRule = input.reviewScope === 'weekly'
+    ? '聚焦这个空间内所有项目在本周的整体投入、完成情况、节奏与取舍；可以比较项目间的投入分布，但不要把某一个项目的结论当作整体结论。'
+    : `只聚焦项目「${input.projectName}」本周的目标、阶段和专注记录；不要把其他项目的完成情况、投入时长或建议混入结论。`;
+  const reviewSessionLines = input.sessions.length
+    ? input.sessions.map((session) => `${session.studyDate}｜${session.durationMinutes} 分钟｜${session.outcome}｜${session.phaseName || '未关联阶段'}｜${session.content.slice(0, 180)}`).join('\n')
+    : '本周期尚无专注记录。';
+  const reviewDailyActualLines = buildDailyActualLines(input);
+
+  return `请为 MyTime 用户生成一份「${scopeLabel}」。
+复盘范围：${scopeRule}
+复盘周期：${input.periodStart} 至 ${input.periodEnd}
+目标：${input.projectGoal}
+当前阶段：${input.currentPhase || '未设置'}
+每日计划：${input.dailyPlanDescription || (input.dailyTargetMinutes ? `${input.dailyTargetMinutes} 分钟/天` : '本周未配置')}
+
+专注记录：
+${reviewSessionLines}
+
+每日实际投入：
+${reviewDailyActualLines}
+
+严格输出 JSON 对象：{"summary":"...","insights":"..."}。
+1. summary 必须以「一、完成了什么与预期差距」开头，只用一小段简要说明可确认的完成或推进，以及与本周预期/计划的差距；没有可比计划时直接说明尚无可比计划，不能臆测。
+2. insights 必须以「二、分析结果与下一步」开头，用一段稍详细的文字分析本周的投入节奏、受阻线索或优先级，并给出 1—3 个具体、可执行的下一步。项目复盘的建议必须服务于该项目；空间复盘的建议必须服务于空间整体安排。
+3. 只返回这两个字段，不要返回 next_steps、其他标题、前言、结语、数据采集过程或模型说明。无记录只能说「无记录」，不能推断为懒惰或任何心理状态。`;
+
   const dailyTarget = Math.max(0, Math.round(input.dailyTargetMinutes || 0));
   const scopeName = input.reviewScope === 'weekly' ? '本周整体' : `项目「${input.projectName}」`;
   const dailyActualLines = buildDailyActualLines(input);
@@ -600,6 +627,11 @@ function fallbackPersonalizedReview(input: PersonalizedReviewInput): Personalize
   const daysWithRecords = Array.from(new Set(input.sessions.map((session) => session.studyDate)));
   const noRecordDays = dailyLines.split('\n').filter((line) => line.includes('无记录')).map((line) => line.slice(0, 10));
   const highInputDays = daysWithRecords.length ? daysWithRecords.join('、') : '暂无';
+
+  return {
+    summary: `一、完成了什么与预期差距\n${completedText}\n${dailyTarget ? `本周实际投入 ${reviewTotalMinutes} 分钟，按每日配置计算的预期为 ${expectedMinutes} 分钟，${executionLabel}计划。` : '本周尚无可比的每日计划配置。'}`,
+    insights: `二、分析结果与下一步\n本周有记录的日期为 ${highInputDays}${noRecordDays.length ? `，无记录日期为 ${noRecordDays.join('、')}` : ''}。${input.reviewScope === 'weekly' ? '下一步先为各项目明确本周的投入取舍，并保留一项最重要的推进动作。' : `下一步围绕「${input.currentPhase || input.projectName}」确定一个可在下一次专注中完成的小动作，并持续记录实际产出。`}`,
+  };
 
   return {
     summary: `一、已完成的内容\n${completedText}`,

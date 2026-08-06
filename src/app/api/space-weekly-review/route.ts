@@ -75,7 +75,7 @@ export async function POST(_request: NextRequest) {
         week_end_date: weekEnd,
         summary: review.summary,
         insights: review.insights,
-        next_steps: review.nextSteps,
+        next_steps: review.nextSteps || null,
         total_minutes: totalMinutes,
         session_count: (sessions || []).length,
       }, { onConflict: 'space_id,week_start_date' })
