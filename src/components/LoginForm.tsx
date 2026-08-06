@@ -228,7 +228,7 @@ export default function LoginForm() {
               <button type="submit" disabled={loading || !password.trim() || !selectedSpaceId} className="w-full rounded-2xl bg-ink px-5 py-4 text-base font-black text-white shadow-lg shadow-slate-300 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
                 {loading ? '正在进入...' : '进入空间'}
               </button>
-              <p className="pt-1 text-center text-xs font-semibold tracking-[0.08em] text-slate-400">帮助手册</p>
+              <a href="/help" className="block pt-1 text-center text-xs font-semibold tracking-[0.08em] text-slate-400 underline-offset-4 transition hover:text-[#A15B30] hover:underline">帮助手册</a>
             </form>
           ) : null}
         </section>
