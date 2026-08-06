@@ -1485,8 +1485,7 @@ function MetricCard({ label, value, tone }: { label: string; value: string; tone
 }
 
 function FocusMoodPileBackground() {
-  // 每一轮都是新的随机散点，而不是把表情预排成固定的竖列。
-  // 组件会在计时器运行时重新抽取一批位置，所以两轮掉落不会重合。
+  // 每轮都使用打散后的全屏落点，既随机又能保证画面不会局部扎堆或留白。
   const [round, setRound] = useState(0);
   useEffect(() => {
     const timer = window.setInterval(() => setRound((current) => current + 1), 22000);
@@ -1501,18 +1500,31 @@ function FocusMoodPileBackground() {
       return seed / 4294967296;
     };
 
-    return Array.from({ length: 32 }, (_, index) => {
+    const columns = 11;
+    const rows = 8;
+    const slots = Array.from({ length: columns * rows }, (_, index) => index);
+    for (let index = slots.length - 1; index > 0; index -= 1) {
+      const nextIndex = Math.floor(random() * (index + 1));
+      [slots[index], slots[nextIndex]] = [slots[nextIndex], slots[index]];
+    }
+
+    return slots.map((slot, index) => {
       const mood = MOODS[Math.floor(random() * MOODS.length)];
+      const column = slot % columns;
+      const row = Math.floor(slot / columns);
+      const columnWidth = 100 / columns;
+      const rowHeight = 100 / rows;
+      const x = (column + 0.5) * columnWidth + (random() - 0.5) * columnWidth * 0.3;
+      const y = (row + 0.5) * rowHeight + (random() - 0.5) * rowHeight * 0.24;
       const style = {
-        // 用整张画布的百分比坐标，而非 column / row 网格。
-        left: `${(-6 + random() * 106).toFixed(2)}%`,
-        animationDelay: `${(random() * 10.5).toFixed(2)}s`,
-        '--mood-size': `clamp(6.5rem, ${(9.2 + random() * 3.8).toFixed(2)}vw, 11.5rem)`,
-        '--mood-drift': `${Math.round(-110 + random() * 220)}px`,
-        '--mood-rotation': `${Math.round(-38 + random() * 76)}deg`,
-        // 让落点从底部向上随机堆叠，形成不规则的铺满效果。
-        '--pile-bottom': `${Math.round(18 + random() * 620)}px`,
-      } as CSSProperties & Record<'--mood-size' | '--mood-drift' | '--mood-rotation' | '--pile-bottom', string>;
+        // 每个位置都在不同的全屏格子里轻微扰动，因此覆盖完整，也不会形成规律列队。
+        left: `calc(${x.toFixed(2)}% - var(--mood-size) / 2)`,
+        animationDelay: `${(random() * 6.5).toFixed(2)}s`,
+        '--mood-size': `clamp(4.8rem, ${(5.8 + random() * 0.8).toFixed(2)}vw, 8rem)`,
+        '--mood-drift': `${Math.round(-18 + random() * 36)}px`,
+        '--mood-rotation': `${Math.round(-18 + random() * 36)}deg`,
+        '--mood-target-y': `calc(${y.toFixed(2)}svh + 4rem)`,
+      } as CSSProperties & Record<'--mood-size' | '--mood-drift' | '--mood-rotation' | '--mood-target-y', string>;
       return { mood, index, style };
     });
   }, [round]);
