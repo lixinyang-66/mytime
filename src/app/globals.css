@@ -47,9 +47,71 @@ select {
   scrollbar-width: none;
 }
 
+@font-face {
+  font-family: "MyTime Cute";
+  src: url("/fonts/ZCOOLQingKeHuangYou-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
 .font-cute {
-  font-family: "YouYuan", "Hannotate SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
-  letter-spacing: 0.025em;
+  font-family: "MyTime Cute", "YouYuan", "Hannotate SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.font-quote {
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+}
+
+.focus-mood-pile-item {
+  width: var(--mood-size);
+  opacity: 0;
+  filter: drop-shadow(0 8px 12px rgba(43, 55, 85, 0.12));
+  animation: focus-mood-pile-fall 22s linear infinite both;
+}
+
+.focus-mood-pile-scene {
+  background: linear-gradient(120deg, #fff6df 0%, #ffe9e4 28%, #f0e8ff 52%, #e6f2ff 76%, #fff0cf 100%);
+  background-size: 300% 300%;
+  animation: focus-gradient-flow 18s ease-in-out infinite alternate;
+}
+
+@keyframes focus-gradient-flow {
+  0% { background-position: 0% 50%; }
+  45% { background-position: 54% 18%; }
+  100% { background-position: 100% 58%; }
+}
+
+@keyframes focus-mood-pile-fall {
+  0%, 6% {
+    opacity: 0;
+    transform: translate3d(0, -8vh, 0) rotate(0deg);
+  }
+
+  12% {
+    opacity: 0.94;
+  }
+
+  38%, 84% {
+    opacity: 0.94;
+    transform: translate3d(var(--mood-drift), calc(100svh - var(--pile-bottom)), 0) rotate(var(--mood-rotation));
+  }
+
+  91% {
+    opacity: 0;
+    transform: translate3d(var(--mood-drift), calc(100svh - var(--pile-bottom)), 0) rotate(var(--mood-rotation));
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -8vh, 0) rotate(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focus-mood-pile-item,
+  .focus-mood-pile-scene {
+    animation: none;
+  }
 }
 
 .mood-rain-item {
