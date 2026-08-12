@@ -482,19 +482,14 @@ function buildDailyActualLines(input: PersonalizedReviewInput): string {
   for (const session of input.sessions) {
     actualByDate.set(session.studyDate, (actualByDate.get(session.studyDate) || 0) + session.durationMinutes);
   }
-  const start = new Date(`${input.periodStart}T00:00:00Z`);
-  const end = new Date(`${input.periodEnd}T00:00:00Z`);
   const target = Math.max(0, Math.round(input.dailyTargetMinutes || 0));
-  const lines: string[] = [];
-  for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
-    const date = cursor.toISOString().slice(0, 10);
-    const actual = actualByDate.get(date) || 0;
+  const lines = Array.from(actualByDate.entries()).sort(([left], [right]) => left.localeCompare(right)).map(([date, actual]) => {
     const comparison = target
-      ? actual >= target ? '达到配置' : actual > 0 ? '低于配置' : '无记录'
-      : actual > 0 ? '有投入，未配置每日目标' : '无记录，未配置每日目标';
-    lines.push(`${date}：${actual} 分钟，${comparison}`);
-  }
-  return lines.join('\n');
+      ? actual >= target ? '达到配置' : '低于配置'
+      : '有投入，未配置每日目标';
+    return `${date}：${actual} 分钟，${comparison}`;
+  });
+  return lines.length ? lines.join('\n') : '本周期暂无专注记录。';
 }
 
 function buildReviewPrompt(input: PersonalizedReviewInput): string {
@@ -521,9 +516,11 @@ ${reviewSessionLines}
 ${reviewDailyActualLines}
 
 严格输出 JSON 对象：{"summary":"...","insights":"..."}。
-1. summary 必须以「一、完成了什么与预期差距」开头，只用一小段简要说明可确认的完成或推进，以及与本周预期/计划的差距；没有可比计划时直接说明尚无可比计划，不能臆测。
-2. insights 必须以「二、分析结果与下一步」开头，用一段稍详细的文字分析本周的投入节奏、受阻线索或优先级，并给出 1—3 个具体、可执行的下一步。项目复盘的建议必须服务于该项目；空间复盘的建议必须服务于空间整体安排。
-3. 只返回这两个字段，不要返回 next_steps、其他标题、前言、结语、数据采集过程或模型说明。无记录只能说「无记录」，不能推断为懒惰或任何心理状态。`;
+1. summary 必须以「一、完成了什么与预期差距」开头，限制为 60—100 字；只写记录可确认的完成或推进，以及与本周计划的差距。没有可比计划时只说“尚无可比计划”。
+2. insights 必须以「二、分析结果与下一步」开头，限制为 120—180 字；先用一两句说明投入节奏、受阻线索或当前优先级，再给出 1—3 个紧贴目标和当前阶段的可执行建议。每条建议都要是下一次专注可开始或可交付的动作，不能写“持续记录”“确定一个小动作”等通用套话。
+3. 项目复盘只服务该项目；空间复盘只服务空间整体安排。建议必须根据目标、当前阶段和真实完成内容产生，不得混入其他项目的结论。
+4. 严禁列出、暗示或统计无记录日期；严禁使用“无记录日期为”“有记录的日期为”等措辞。若整周没有记录，最多只写一次“本周暂无专注记录”，仍须依据目标和当前阶段给出具体的下一步。
+5. 只返回这两个字段，不要返回 next_steps、其他标题、前言、结语、数据采集过程或模型说明；不做心理或医学判断。`;
 
   const dailyTarget = Math.max(0, Math.round(input.dailyTargetMinutes || 0));
   const scopeName = input.reviewScope === 'weekly' ? '本周整体' : `项目「${input.projectName}」`;
@@ -598,7 +595,7 @@ function parsePersonalizedReview(text: string): PersonalizedReview | null {
       const summary = String(parsed.summary || '').trim();
       const insights = String(parsed.insights || '').trim();
       const nextSteps = String(parsed.next_steps || parsed.nextSteps || '').trim();
-      if (summary && insights && nextSteps) return { summary, insights, nextSteps };
+      if (summary && insights) return { summary, insights, nextSteps: nextSteps || undefined };
     } catch {
       // 继续尝试下一个候选 JSON。
     }
@@ -609,7 +606,6 @@ function parsePersonalizedReview(text: string): PersonalizedReview | null {
 function fallbackPersonalizedReview(input: PersonalizedReviewInput): PersonalizedReview {
   const reviewTotalMinutes = input.sessions.reduce((sum, session) => sum + session.durationMinutes, 0);
   const dailyTarget = Math.max(0, Math.round(input.dailyTargetMinutes || 0));
-  const dailyLines = buildDailyActualLines(input);
   const dayCount = Math.max(1, Math.round((new Date(`${input.periodEnd}T00:00:00Z`).getTime() - new Date(`${input.periodStart}T00:00:00Z`).getTime()) / 86_400_000) + 1);
   const expectedMinutes = dailyTarget * dayCount;
   const executionLabel = !dailyTarget
@@ -624,39 +620,31 @@ function fallbackPersonalizedReview(input: PersonalizedReviewInput): Personalize
   const completedText = completedDetails.length
     ? completedDetails.map((content) => `- ${content}`).join('\n')
     : '暂无可确认的完成内容。';
-  const daysWithRecords = Array.from(new Set(input.sessions.map((session) => session.studyDate)));
-  const noRecordDays = dailyLines.split('\n').filter((line) => line.includes('无记录')).map((line) => line.slice(0, 10));
-  const highInputDays = daysWithRecords.length ? daysWithRecords.join('、') : '暂无';
+  const phaseLabel = input.currentPhase || input.projectName;
+  const latestCompletedDetail = completedDetails.at(-1);
+  const phaseAction = fallbackNextAction(input, phaseLabel, latestCompletedDetail);
 
   return {
     summary: `一、完成了什么与预期差距\n${completedText}\n${dailyTarget ? `本周实际投入 ${reviewTotalMinutes} 分钟，按每日配置计算的预期为 ${expectedMinutes} 分钟，${executionLabel}计划。` : '本周尚无可比的每日计划配置。'}`,
-    insights: `二、分析结果与下一步\n本周有记录的日期为 ${highInputDays}${noRecordDays.length ? `，无记录日期为 ${noRecordDays.join('、')}` : ''}。${input.reviewScope === 'weekly' ? '下一步先为各项目明确本周的投入取舍，并保留一项最重要的推进动作。' : `下一步围绕「${input.currentPhase || input.projectName}」确定一个可在下一次专注中完成的小动作，并持续记录实际产出。`}`,
+    insights: `二、分析结果与下一步\n${input.sessions.length ? `本周累计投入 ${reviewTotalMinutes} 分钟，${executionLabel}当前计划；优先把投入集中到「${phaseLabel}」。` : '本周暂无专注记录，暂不对投入节奏作判断。'} ${input.reviewScope === 'weekly' ? '下一步先为本周最重要的项目保留一个明确的推进产出，并压缩其余项目的临时事项。' : phaseAction}`,
   };
+}
 
-  return {
-    summary: `一、已完成的内容\n${completedText}`,
-    insights: `二、投入与计划执行情况\n- 计划进度：${executionLabel}${dailyTarget ? `；实际投入 ${reviewTotalMinutes} 分钟，配置总量 ${expectedMinutes} 分钟。` : '；本周未配置每日时间。'}\n- 每日配置时间达成情况：${dailyLines}\n- 投入节奏：有记录日为 ${highInputDays}${noRecordDays.length ? `；无记录日为 ${noRecordDays.join('、')}。` : '；本周期每天均有记录。'}`,
-    nextSteps: `三、下一步怎么做\n1. 围绕“${input.currentPhase || input.projectName}”保留一个可在下一次专注中完成的小动作。\n2. 每次结束专注后写下实际完成内容，方便下次复盘判断进展。`,
-  };
-
-  const totalMinutes = input.sessions.reduce((sum, session) => sum + session.durationMinutes, 0);
-  const completedCount = input.sessions.filter((session) => session.outcome === 'completed').length;
-  const blocked = input.sessions.filter((session) => session.outcome === 'blocked');
-  const totalText = input.sessions.length ? `本周期共记录 ${input.sessions.length} 次专注、${totalMinutes} 分钟，其中 ${completedCount} 次标记为已完成。` : '本周期还没有专注记录，暂时无法判断项目推进情况。';
-  const blockedText = blocked.length ? `有 ${blocked.length} 次记录标记为受阻，可在下次复盘时优先说明阻塞原因。` : '目前没有被明确标记为受阻的专注记录。';
-  const step = input.currentPhase ? `围绕“${input.currentPhase}”保留 1 项主行动和不超过 2 项辅助行动。` : '先在项目路线图中确认当前阶段，再保留 1 项本周主行动。';
-  return {
-    summary: totalText,
-    insights: `${blockedText} 每日状态仅用于观察个人记录中的线索，不作为对能力或心理状态的判断。`,
-    nextSteps: `${step}\n每次专注结束后记录实际完成内容，并标记“已推进、已完成或受阻”。\n周末根据真实记录决定保留、压缩或调整下一步。`,
-  };
+function fallbackNextAction(input: PersonalizedReviewInput, phaseLabel: string, latestCompletedDetail?: string): string {
+  const goal = input.projectGoal || input.projectName;
+  const continuation = latestCompletedDetail ? `将已完成的“${latestCompletedDetail.slice(0, 42)}”整理为下一份可保存材料；` : '';
+  if (input.projectType === 'research') return `${continuation}下一次专注围绕「${phaseLabel}」完成一页研究/写作提纲：列出本次要处理的小节、3 个要点和需补的资料。`;
+  if (input.projectType === 'exam') return `${continuation}下一次专注围绕「${phaseLabel}」完成一组专题题目，并把错题或不确定点归成不超过 3 条复习清单。`;
+  if (input.projectType === 'fitness') return `${continuation}下一次专注围绕「${phaseLabel}」完成一份本周训练与饮食执行表，写清一次训练的动作、组数和记录方式。`;
+  if (input.projectType === 'competition') return `${continuation}下一次专注围绕「${phaseLabel}」完成一页项目材料：明确要交付的模块、负责人或验证方式。`;
+  return `${continuation}下一次专注围绕「${phaseLabel}」完成「${goal.slice(0, 52)}」的一个可保存子产出，并写下验收标准。`;
 }
 
 export async function generatePersonalizedReview(input: PersonalizedReviewInput): Promise<PersonalizedReview> {
   const result = await requestDeepSeek([
     { role: 'system', content: '你是谨慎的个人项目复盘助手。只基于用户提供的记录给出建议，不做诊断，不把相关性当作因果。' },
     { role: 'user', content: buildReviewPrompt(input) },
-  ], { temperature: 0.3, maxTokens: 1600, json: true }, 'review');
+  ], { temperature: 0.15, maxTokens: 760, json: true }, 'review');
   if (result.failure) return fallbackPersonalizedReview(input);
   if (!result.data) return fallbackPersonalizedReview(input);
 

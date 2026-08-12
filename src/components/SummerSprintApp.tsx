@@ -489,7 +489,7 @@ function SpaceView({ space, projects, projectPhases, moods, progressAssessments,
   }
 
   return (
-    <div className="space-dashboard-clay rounded-[2.5rem] bg-[#fff7ea] p-5 shadow-soft sm:p-8">
+    <div className="space-dashboard-clay clay-raised-surface rounded-[2.5rem] bg-[#fff7ea] p-5 shadow-soft sm:p-8">
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <div title={space.name}>
@@ -533,7 +533,7 @@ function SpaceView({ space, projects, projectPhases, moods, progressAssessments,
         </div>
         <div className="mt-4 rounded-[1.6rem] border border-orange-100 bg-gradient-to-br from-amber-50 via-rose-50 to-sky-50 p-3">
           <div className="flex items-center gap-2">
-            <div className="grid flex-1 grid-cols-4 gap-2">
+            <div className="mood-picker-grid grid grid-cols-4 gap-2">
               {visibleMoods.map((mood) => {
                 const selected = todayMood?.mood_key === mood.key;
                 return (
@@ -903,7 +903,7 @@ function SpaceGanttOverview({ projects, phases, progressAssessments, deletingPro
                 <div className="flex shrink-0 items-center gap-2">
                   <div className="relative h-3 w-20 rounded-full bg-[#FFF6E8] ring-1 ring-[#F0D8BA] sm:w-32 lg:w-72" title={assessment?.summary || '等待第一条专注记录后，由 AI 根据真实产出评估。'} aria-label={assessment ? `AI 评估的项目实际进度 ${progress}%` : '项目实际进度等待评估'}>
                     <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${progress}%`, backgroundImage: 'repeating-linear-gradient(135deg, #283044 0 5px, #FFF9F0 5px 10px)' }} />
-                    <span className="absolute -top-5 z-20 -translate-x-1/2 text-base leading-none" style={{ left: `${sheepPosition}%` }} aria-hidden="true"><span className="block" style={{ transform: 'scaleX(-1)' }}>🐏</span></span>
+                    <span className="progress-sheep-marker" style={{ left: `${sheepPosition}%` }} aria-hidden="true"><span className="progress-sheep" /></span>
                   </div>
                   <span className="text-xs font-bold text-slate-500">{assessment ? `${progress}%` : '待评估'}</span>
                 </div>
@@ -1053,7 +1053,7 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
         <button onClick={onBack} className="rounded-full bg-white/70 px-4 py-2 text-xs font-bold text-slate-500 shadow-sm">返回空间</button>
       </header>
 
-      <section className="rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white">
+      <section className="project-hero-clay clay-raised-surface rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm font-bold text-slate-500">项目计划图</p>
@@ -1455,7 +1455,7 @@ function ReviewView({ data, projectId, onBack, onRefresh }: { data: ProjectData;
 
       <section className="rounded-[2rem] bg-white/90 p-6 shadow-soft">
         <p className="text-sm font-bold text-slate-500">项目 AI 复盘</p>
-        <h1 className="mt-1 text-2xl font-black">只看这个项目的下一步</h1>
+        <h1 className="mt-1 text-2xl font-black">本周项目复盘</h1>
         <button onClick={generateReview} disabled={generating} className="mt-5 w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{generating ? '正在更新项目周复盘…' : '生成项目本周 AI 复盘'}</button>
       </section>
 
@@ -1562,7 +1562,7 @@ function FocusView({ elapsedSeconds, paused, onPause, onFinish }: {
   const dateLabel = `${today.getMonth() + 1}月${today.getDate()}日 · 星期${['日', '一', '二', '三', '四', '五', '六'][today.getDay()]}`;
   return (
     <div className="focus-clay-countryside fixed inset-0 z-50 grid min-h-[100dvh] w-screen place-items-center overflow-hidden px-5 py-20">
-      <section className="focus-clay-card relative z-10 w-full max-w-[34rem] rounded-[2.75rem] border-[3px] border-white bg-white/95 px-6 py-16 text-center shadow-[0_28px_70px_rgba(43,55,85,0.15)] backdrop-blur-sm sm:px-12 sm:py-20">
+      <section className="focus-clay-card clay-raised-surface relative z-10 w-full max-w-[34rem] rounded-[2.75rem] border-[3px] border-white bg-white/95 px-6 py-16 text-center shadow-[0_28px_70px_rgba(43,55,85,0.15)] backdrop-blur-sm sm:px-12 sm:py-20">
         <p className="text-sm font-bold tracking-[0.12em] text-slate-500">{dateLabel}</p>
         <h1 className="mt-4 text-6xl font-black tracking-tight sm:text-8xl">{formatSeconds(elapsedSeconds)}</h1>
         <div className="mt-14 grid grid-cols-2 gap-3">
