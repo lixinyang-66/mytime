@@ -2,29 +2,10 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { FormEvent, useEffect, useState, type CSSProperties } from 'react';
-import MoodRainLoader from '@/components/MoodRainLoader';
-import { MOODS } from '@/lib/moods';
+import { FormEvent, useEffect, useState } from 'react';
 
 type Space = { id: number; name: string };
 type Panel = 'login' | 'create' | 'manage';
-
-const LOGIN_MOOD_TILES = Array.from({ length: 96 }, (_, index) => {
-  const row = Math.floor(index / 12);
-  return {
-    mood: MOODS[(index * 7 + row * 3) % MOODS.length],
-    style: {
-      left: `${(index * 37) % 104 - 3}%`,
-      top: '-6rem',
-      width: `${50 + (index % 5) * 8}px`,
-      opacity: 0.42 + (index % 5) * 0.05,
-      animationDelay: `-${((index * 1.37) % 22).toFixed(2)}s`,
-      animationDuration: `${17 + (index % 7) * 1.35}s`,
-      '--mood-drift': `${((index * 29) % 130) - 65}px`,
-      '--mood-rotation': `${((index * 41) % 54) - 27}deg`,
-    } as CSSProperties & Record<'--mood-drift' | '--mood-rotation', string>,
-  };
-});
 
 export default function LoginForm() {
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -135,18 +116,29 @@ export default function LoginForm() {
     await loadSpaces();
   }
 
-  if (spaceLoading && spaces.length === 0) return <MoodRainLoader />;
+  if (spaceLoading && spaces.length === 0) {
+    return (
+      <main className="relative min-h-screen overflow-hidden px-5 py-8 text-ink">
+        <LoginClayCountryside />
+        <div className="relative z-10 mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-md place-items-center">
+          <section className="rounded-[2.2rem] bg-white/90 px-7 py-6 text-center shadow-soft ring-1 ring-white/70 backdrop-blur-xl">
+            <p className="font-black text-slate-600">正在进入 MyTime…</p>
+          </section>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden px-5 py-8 text-ink">
-      <LoginMoodWall />
+      <LoginClayCountryside />
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
         <section className="rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white/70 backdrop-blur-xl">
           <div className="mb-6 flex justify-center">
             <div className="relative inline-block rotate-1" aria-label="MyTime">
               <span
                 className="relative z-10 inline-block text-[2.8rem] font-black leading-none tracking-[-0.12em] text-[#2F405A]"
-                style={{ fontFamily: '"Segoe Print", "Comic Sans MS", cursive', textShadow: '3px 3px 0 #FFFAF0, 6px 6px 0 #FFDDA7, 9px 9px 18px rgba(193,125,73,0.18)' }}
+                style={{ fontFamily: '"Caveat", "Patrick Hand", cursive', textShadow: '3px 3px 0 #FFFAF0, 6px 6px 0 #FFDDA7, 9px 9px 18px rgba(193,125,73,0.18)' }}
               >
                 MyTime
               </span>
@@ -238,20 +230,52 @@ export default function LoginForm() {
   );
 }
 
-function LoginMoodWall() {
+function LoginClayCountryside() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,224,138,0.26),transparent_35rem),radial-gradient(circle_at_bottom_right,rgba(158,216,255,0.30),transparent_33rem)]" />
-      {LOGIN_MOOD_TILES.map(({ mood, style }, index) => (
-        <img
-          key={`${mood.key}-${index}`}
-          src={mood.src}
-          alt=""
-          className="mood-rain-item absolute rounded-2xl object-cover mix-blend-multiply drop-shadow-[0_7px_12px_rgba(138,94,49,0.14)]"
-          style={style}
-        />
-      ))}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,250,241,0.22)_0%,rgba(255,250,241,0)_68%)]" />
+    <div className="login-clay-world" aria-hidden="true">
+      <div className="login-clay-sky" />
+      <ClayCloud className="login-cloud-one" />
+      <ClayCloud className="login-cloud-two" />
+      <ClayCloud className="login-cloud-three" />
+      <div className="login-clay-hill login-clay-hill-back" />
+      <div className="login-clay-hill login-clay-hill-front" />
+      <div className="login-clay-meadow">
+        <ClayHouse className="login-house-left" />
+        <ClayTree className="login-tree-left" />
+        <ClayTree className="login-tree-right" tall />
+        <ClayHouse className="login-house-right" peach />
+        <ClaySheep className="login-sheep-left" grazing />
+        <ClaySheep className="login-sheep-middle" />
+        <ClaySheep className="login-sheep-right" grazing />
+        <span className="login-clay-flower login-clay-flower-one" />
+        <span className="login-clay-flower login-clay-flower-two" />
+        <span className="login-clay-flower login-clay-flower-three" />
+      </div>
+      <div className="login-clay-vignette" />
+    </div>
+  );
+}
+
+function ClayCloud({ className }: { className: string }) {
+  return <div className={`login-clay-cloud ${className}`}><i /><i /><i /></div>;
+}
+
+function ClayHouse({ className, peach = false }: { className: string; peach?: boolean }) {
+  return (
+    <div className={`login-clay-house ${peach ? 'login-clay-house-peach' : ''} ${className}`}>
+      <span className="login-house-roof" /><span className="login-house-wall" /><span className="login-house-door" /><span className="login-house-window login-house-window-left" /><span className="login-house-window login-house-window-right" />
+    </div>
+  );
+}
+
+function ClayTree({ className, tall = false }: { className: string; tall?: boolean }) {
+  return <div className={`login-clay-tree ${tall ? 'login-clay-tree-tall' : ''} ${className}`}><span className="login-tree-crown login-tree-crown-one" /><span className="login-tree-crown login-tree-crown-two" /><span className="login-tree-crown login-tree-crown-three" /><span className="login-tree-trunk" /></div>;
+}
+
+function ClaySheep({ className, grazing = false }: { className: string; grazing?: boolean }) {
+  return (
+    <div className={`login-clay-sheep ${grazing ? 'login-clay-sheep-grazing' : ''} ${className}`}>
+      <span className="login-sheep-body"><i /><i /><i /><i /><i /></span><span className="login-sheep-head" /><span className="login-sheep-leg login-sheep-leg-one" /><span className="login-sheep-leg login-sheep-leg-two" />
     </div>
   );
 }
