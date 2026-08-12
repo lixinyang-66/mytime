@@ -103,11 +103,6 @@ main article[class*="rounded-"] {
   box-shadow: var(--clay-shadow);
 }
 
-main div[class*="rounded-"] {
-  border: 1px solid rgba(151, 104, 67, 0.12);
-  box-shadow: var(--clay-shadow-small);
-}
-
 main nav[class*="rounded-"],
 main input,
 main textarea,
@@ -552,7 +547,7 @@ main .rounded-full {
 .app-clay-countryside { display: none; }
 
 .app-clay-content {
-  max-width: min(92rem, calc(100vw - 3rem));
+  max-width: min(70rem, calc(100vw - 2.5rem));
 }
 
 .login-panel-wrap { max-width: 34rem; }
@@ -647,6 +642,10 @@ main .rounded-full {
   .login-clay-card { padding: 2.25rem; }
 }
 
+@media (min-width: 1024px) {
+  .app-clay-content { max-width: min(70rem, calc(100vw - 5rem)); }
+}
+
 @media (max-width: 640px) {
   .app-clay-content { max-width: calc(100vw - 2rem); }
   .login-clay-world,
@@ -667,4 +666,70 @@ main .rounded-full {
   border-radius: 54% 50% 0 0;
   background: linear-gradient(135deg, #dcefb6, #b0dc86);
   box-shadow: inset 0 9px 16px rgba(255,255,255,.4);
+}
+
+/* 真正有厚边和压痕的主承载面：只用于大卡片，避免把每一层都压成同一种平面小框。 */
+.clay-raised-surface {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: transparent !important;
+  background-color: #fff6e6 !important;
+  background-image: linear-gradient(145deg, rgba(255,255,255,.14), rgba(255,239,203,.08)), url('/clay/raised-panel-v1.png') !important;
+  background-position: center !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  box-shadow: 0 11px 0 rgba(103,72,42,.15), 0 28px 44px rgba(49,77,52,.22), inset 2px 2px 0 rgba(255,255,255,.68) !important;
+}
+
+.clay-raised-surface > * { position: relative; z-index: 1; }
+
+.space-dashboard-clay.clay-raised-surface {
+  padding: clamp(1.75rem, 3.4vw, 3.15rem) !important;
+}
+
+.project-hero-clay.clay-raised-surface,
+.focus-clay-card.clay-raised-surface {
+  padding: clamp(2rem, 3vw, 3.25rem) !important;
+}
+
+/* 桌面端的状态选择保持紧凑，避免图片随着主面板横向拉伸。 */
+.mood-picker-grid {
+  width: min(100%, 42rem);
+  margin-inline: auto;
+}
+
+/* 进度位置仍由真实 progress 决定；动画仅表现站在当前位置的轻快走动。 */
+.progress-sheep-marker {
+  position: absolute;
+  top: -1.35rem;
+  z-index: 20;
+  width: 0;
+  transition: left 720ms cubic-bezier(.2,.8,.2,1);
+}
+
+.progress-sheep {
+  display: block;
+  width: 2.1rem;
+  height: 2.1rem;
+  background-image: url('/clay/progress-sheep.png');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 154%;
+  filter: drop-shadow(0 3px 2px rgba(83,67,44,.24));
+  transform: translate(-50%, -20%);
+  transform-origin: 50% 80%;
+  animation: progress-sheep-trot 1.15s ease-in-out infinite;
+}
+
+@keyframes progress-sheep-trot {
+  0%, 100% { transform: translate(-50%, -20%) rotate(-2deg); }
+  25% { transform: translate(-43%, -32%) rotate(2deg); }
+  50% { transform: translate(-50%, -42%) rotate(-1deg); }
+  75% { transform: translate(-57%, -30%) rotate(2deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-sheep-marker { transition: none; }
+  .progress-sheep { animation: none; }
 }
