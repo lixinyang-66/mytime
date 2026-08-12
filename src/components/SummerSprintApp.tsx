@@ -1562,7 +1562,7 @@ function FocusView({ elapsedSeconds, paused, onPause, onFinish }: {
   const dateLabel = `${today.getMonth() + 1}月${today.getDate()}日 · 星期${['日', '一', '二', '三', '四', '五', '六'][today.getDay()]}`;
   return (
     <div className="focus-clay-countryside fixed inset-0 z-50 grid min-h-[100dvh] w-screen place-items-center overflow-hidden px-5 py-20">
-      <section className="relative z-10 w-full max-w-[34rem] rounded-[2.75rem] border-[3px] border-white bg-white/95 px-6 py-16 text-center shadow-[0_28px_70px_rgba(43,55,85,0.15)] backdrop-blur-sm sm:px-12 sm:py-20">
+      <section className="focus-clay-card relative z-10 w-full max-w-[34rem] rounded-[2.75rem] border-[3px] border-white bg-white/95 px-6 py-16 text-center shadow-[0_28px_70px_rgba(43,55,85,0.15)] backdrop-blur-sm sm:px-12 sm:py-20">
         <p className="text-sm font-bold tracking-[0.12em] text-slate-500">{dateLabel}</p>
         <h1 className="mt-4 text-6xl font-black tracking-tight sm:text-8xl">{formatSeconds(elapsedSeconds)}</h1>
         <div className="mt-14 grid grid-cols-2 gap-3">
