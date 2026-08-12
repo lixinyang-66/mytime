@@ -733,3 +733,204 @@ main .rounded-full {
   .progress-sheep-marker { transition: none; }
   .progress-sheep { animation: none; }
 }
+
+/*
+ * 空间专注页：这一组材质故意只限定在 .space-focus-page-clay 内。
+ * 它以真实横向粘土面板、内凹子卡和凸起按钮作为 DOM 的底板，避免把
+ * “整套粘土风格”粗暴覆盖到其他尚未验收的页面。
+ */
+.space-focus-page-clay {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.68), rgba(255, 235, 196, 0.26)),
+    url('/clay/ivory-card-clay.png') center / 540px 540px;
+  box-shadow:
+    0 10px 0 rgba(97, 72, 44, 0.14),
+    0 32px 58px rgba(43, 71, 45, 0.23),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.86) !important;
+}
+
+.space-focus-page-clay::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: '';
+  opacity: 0.38;
+  background-image: radial-gradient(rgba(114, 85, 51, 0.16) 0.62px, transparent 0.72px);
+  background-size: 9px 9px;
+  mix-blend-mode: multiply;
+}
+
+.app-clay-content .space-focus-main-panel,
+.app-clay-content .space-focus-quote-panel,
+.app-clay-content .space-focus-page-clay > section:not(.space-focus-main-panel):not(.space-focus-quote-panel) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 0 !important;
+  background-color: #fff6e7 !important;
+  background-image: url('/clay/space-focus-main-panel-v1.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  box-shadow: none !important;
+}
+
+.app-clay-content .space-focus-main-panel {
+  padding: clamp(2rem, 4vw, 3.25rem) !important;
+}
+
+.app-clay-content .space-focus-quote-panel {
+  padding: clamp(2rem, 3.8vw, 3.15rem) !important;
+}
+
+.app-clay-content .space-focus-time-card,
+.app-clay-content .space-focus-project-card,
+.app-clay-content .space-focus-summary-bar {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 0 !important;
+  background-color: #fff7e9 !important;
+  background-image: url('/clay/space-focus-inset-card-v1.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  box-shadow: none !important;
+}
+
+.app-clay-content .space-focus-time-card {
+  padding: 1.15rem 1.35rem 1.3rem !important;
+}
+
+.app-clay-content .space-focus-project-card {
+  min-height: 5.55rem;
+  padding: 1.15rem 1.35rem !important;
+}
+
+.app-clay-content .space-focus-summary-bar {
+  padding: 1.15rem 1.4rem !important;
+}
+
+.space-focus-time-card > *,
+.space-focus-project-card > *,
+.space-focus-summary-bar > *,
+.space-focus-main-panel > *,
+.space-focus-quote-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.app-clay-content .space-focus-small-action,
+.app-clay-content .space-focus-nav-key {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 0 !important;
+  background-color: #fff0d7 !important;
+  background-image: url('/clay/space-focus-keycap-v1.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 122% 122% !important;
+  box-shadow: none !important;
+}
+
+.app-clay-content .space-focus-nav {
+  border: 0 !important;
+  background: rgba(255, 248, 235, 0.48) !important;
+  box-shadow: 0 5px 0 rgba(111, 79, 45, 0.14), 0 12px 22px rgba(85, 69, 48, 0.14) !important;
+}
+
+.app-clay-content .space-focus-nav-key {
+  flex: 0 0 2.5rem;
+}
+
+.app-clay-content .space-focus-nav-key.is-active {
+  color: #db5a21 !important;
+  filter: saturate(1.1);
+}
+
+.app-clay-content .space-focus-exit-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 0 !important;
+  background-color: #fff5e4 !important;
+  background-image: url('/clay/space-focus-keycap-v1.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 146% 165% !important;
+  box-shadow: none !important;
+}
+
+.app-clay-content .space-focus-review-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 0 !important;
+  background-color: #fff7e9 !important;
+  background-image: url('/clay/space-focus-inset-card-v1.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  box-shadow: none !important;
+}
+
+.space-focus-review-panel .border-violet-100 {
+  border-color: rgba(225, 163, 87, 0.28) !important;
+}
+
+.space-focus-review-panel .text-violet-700 {
+  color: #aa5928 !important;
+}
+
+.app-clay-content .space-focus-primary-action {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-width: clamp(12.5rem, 28vw, 17rem);
+  min-height: 5.9rem;
+  border: 0 !important;
+  background-color: #ff9f35 !important;
+  background-image: url('/clay/space-focus-primary-button-v1.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  box-shadow: none !important;
+  color: #fffdf6 !important;
+  letter-spacing: 0.08em;
+  text-shadow: 0 2px 0 rgba(139, 67, 18, 0.27), 0 5px 8px rgba(116, 63, 24, 0.2);
+}
+
+.app-clay-content .space-focus-primary-action:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.012) !important;
+  filter: saturate(1.02) brightness(1.025);
+}
+
+.app-clay-content .space-focus-primary-action:active:not(:disabled) {
+  transform: translateY(3px) scale(0.992) !important;
+  filter: brightness(0.98);
+}
+
+.space-focus-page-clay h1,
+.space-focus-page-clay h2,
+.space-focus-page-clay h3 {
+  color: #263b58;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.88), 0 4px 5px rgba(73, 59, 43, 0.19);
+}
+
+.space-focus-page-clay .text-orange-700,
+.space-focus-page-clay .text-orange-800 {
+  color: #bb5621 !important;
+  text-shadow: 0 1px 0 rgba(255, 250, 239, 0.88), 0 2px 3px rgba(125, 64, 29, 0.18);
+}
+
+@media (max-width: 640px) {
+  .app-clay-content .space-focus-main-panel { padding: 1.75rem 1.35rem !important; }
+  .app-clay-content .space-focus-quote-panel { padding: 1.75rem 1.45rem !important; }
+  .app-clay-content .space-focus-primary-action { min-width: 100%; min-height: 5.4rem; }
+  .app-clay-content .space-focus-project-card { min-height: 5rem; }
+}
