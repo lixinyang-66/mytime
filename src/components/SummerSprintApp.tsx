@@ -299,7 +299,27 @@ export default function MyTimeApp() {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <main className="safe-bottom mx-auto min-h-screen w-full max-w-3xl px-4 py-5 text-ink sm:px-6">{children}</main>;
+  return (
+    <main className="clay-app-shell safe-bottom mx-auto min-h-screen w-full max-w-3xl px-4 py-5 text-ink sm:px-6">
+      <AppClayCountrysideBackdrop />
+      <div className="app-clay-content relative z-10">{children}</div>
+    </main>
+  );
+}
+
+function AppClayCountrysideBackdrop() {
+  return (
+    <div className="app-clay-countryside" aria-hidden="true">
+      <span className="app-clay-cloud app-clay-cloud-left" />
+      <span className="app-clay-cloud app-clay-cloud-right" />
+      <span className="app-clay-hill app-clay-hill-back" />
+      <span className="app-clay-hill app-clay-hill-front" />
+      <span className="app-clay-tree app-clay-tree-left"><i /><i /><b /></span>
+      <span className="app-clay-tree app-clay-tree-right"><i /><i /><b /></span>
+      <span className="app-clay-house app-clay-house-left"><i /><b /></span>
+      <span className="app-clay-house app-clay-house-right"><i /><b /></span>
+    </div>
+  );
 }
 
 function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -469,7 +489,7 @@ function SpaceView({ space, projects, projectPhases, moods, progressAssessments,
   }
 
   return (
-    <div className="rounded-[2.5rem] bg-[#fff7ea] p-5 shadow-soft sm:p-8">
+    <div className="space-dashboard-clay rounded-[2.5rem] bg-[#fff7ea] p-5 shadow-soft sm:p-8">
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <div title={space.name}>
@@ -522,7 +542,7 @@ function SpaceView({ space, projects, projectPhases, moods, progressAssessments,
                     type="button"
                     onClick={() => saveMood(mood.key)}
                     disabled={Boolean(moodSaving) || turningMoodHandle}
-                    className={`overflow-hidden rounded-2xl p-0.5 transition disabled:opacity-50 ${selected ? 'bg-honey ring-2 ring-orange-300' : 'bg-cream/70 ring-1 ring-orange-100 hover:-translate-y-0.5'}`}
+                    className={`mood-keycap overflow-hidden rounded-2xl p-0.5 transition disabled:opacity-50 ${selected ? 'bg-honey ring-2 ring-orange-300' : 'bg-cream/70 ring-1 ring-orange-100 hover:-translate-y-0.5'}`}
                     aria-label={mood.label}
                   >
                     <img src={mood.src} alt="" className="aspect-square w-full scale-125 rounded-xl object-cover" />
@@ -1024,7 +1044,7 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
   const weekExpected = data.currentPlanItems.reduce((sum, item) => sum + Number(item.expected_minutes ?? (item.daily_minutes * 7)), 0);
 
   return (
-    <div className="space-y-5">
+    <div className="project-home-clay space-y-5">
       <header className="flex items-center justify-between pt-2">
         <div>
           <p className="text-sm font-bold text-orange-700">MyTime</p>
@@ -1071,11 +1091,6 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
           </div>
           <button onClick={onReview} className="rounded-full bg-violet-100 px-4 py-2 text-sm font-black text-violet-800">打开复盘</button>
         </div>
-        {data.recentReviews[0] ? (
-          <p className="mt-4 rounded-2xl bg-violet-50 p-4 text-sm font-bold leading-6 text-violet-800">{data.recentReviews[0].summary}</p>
-        ) : (
-          <p className="mt-4 rounded-2xl bg-violet-50 p-4 text-sm font-bold leading-6 text-violet-700">还没有复盘记录，完成几次专注后可以生成第一份 AI 复盘。</p>
-        )}
       </section>
     </div>
   );
@@ -1441,7 +1456,6 @@ function ReviewView({ data, projectId, onBack, onRefresh }: { data: ProjectData;
       <section className="rounded-[2rem] bg-white/90 p-6 shadow-soft">
         <p className="text-sm font-bold text-slate-500">项目 AI 复盘</p>
         <h1 className="mt-1 text-2xl font-black">只看这个项目的下一步</h1>
-        <p className="mt-3 rounded-2xl bg-violet-50 p-4 text-sm font-bold leading-6 text-violet-700">这份复盘只使用当前项目本周的目标、阶段与专注记录，不会混入其他项目的进度。每周重复生成会更新本周这一份复盘。</p>
         <button onClick={generateReview} disabled={generating} className="mt-5 w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{generating ? '正在更新项目周复盘…' : '生成项目本周 AI 复盘'}</button>
       </section>
 
@@ -1547,8 +1561,7 @@ function FocusView({ elapsedSeconds, paused, onPause, onFinish }: {
   const today = new Date();
   const dateLabel = `${today.getMonth() + 1}月${today.getDate()}日 · 星期${['日', '一', '二', '三', '四', '五', '六'][today.getDay()]}`;
   return (
-    <div className="focus-mood-pile-scene fixed inset-0 z-50 grid min-h-[100dvh] w-screen place-items-center overflow-hidden px-5 py-20">
-      <FocusMoodPileBackground />
+    <div className="focus-clay-countryside fixed inset-0 z-50 grid min-h-[100dvh] w-screen place-items-center overflow-hidden px-5 py-20">
       <section className="relative z-10 w-full max-w-[34rem] rounded-[2.75rem] border-[3px] border-white bg-white/95 px-6 py-16 text-center shadow-[0_28px_70px_rgba(43,55,85,0.15)] backdrop-blur-sm sm:px-12 sm:py-20">
         <p className="text-sm font-bold tracking-[0.12em] text-slate-500">{dateLabel}</p>
         <h1 className="mt-4 text-6xl font-black tracking-tight sm:text-8xl">{formatSeconds(elapsedSeconds)}</h1>
