@@ -120,8 +120,8 @@ export default function LoginForm() {
     return (
       <main className="relative min-h-screen overflow-hidden px-5 py-8 text-ink">
         <LoginClayCountryside />
-        <div className="relative z-10 mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-md place-items-center">
-          <section className="rounded-[2.2rem] bg-white/90 px-7 py-6 text-center shadow-soft ring-1 ring-white/70 backdrop-blur-xl">
+        <div className="login-panel-wrap relative z-10 mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-md place-items-center">
+          <section className="login-clay-card rounded-[2.2rem] bg-white/90 px-7 py-6 text-center shadow-soft ring-1 ring-white/70 backdrop-blur-xl">
             <p className="font-black text-slate-600">正在进入 MyTime…</p>
           </section>
         </div>
@@ -132,8 +132,8 @@ export default function LoginForm() {
   return (
     <main className="relative min-h-screen overflow-hidden px-5 py-8 text-ink">
       <LoginClayCountryside />
-      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
-        <section className="rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white/70 backdrop-blur-xl">
+      <div className="login-panel-wrap relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
+        <section className="login-clay-card rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white/70 backdrop-blur-xl">
           <div className="mb-6 flex justify-center">
             <div className="relative inline-block rotate-1" aria-label="MyTime">
               <span
