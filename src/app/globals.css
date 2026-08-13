@@ -935,239 +935,285 @@ main .rounded-full {
   .app-clay-content .space-focus-project-card { min-height: 5rem; }
 }
 
-/* =========================================================
- * 登录页 3D 粘土风格强化
- * 仅调整登录页卡片、按钮、输入框、提示等视觉样式，
- * 不改变任何功能、文案与交互逻辑。
- * ========================================================= */
+/*
+ * 登录页独立验收：每一层都使用有高度的粘土面，而不是给原有扁平控件补一圈描边。
+ * 所有内容仍是可交互的 DOM；图片只提供手作粘土的厚边、凹槽和受光。
+ */
+.login-clay-screen {
+  --login-ink: #33445f;
+  --login-cream: #fff5df;
+  --login-orange: #bc6131;
+  --login-shadow: rgba(91, 62, 35, 0.29);
+  min-height: 100svh;
+  background: #b7e8fb;
+}
 
-/* 登录主卡片：更厚实的粘土隆起感 */
-.clay-login-card {
-  padding: 1.65rem;
-  border-radius: 2.6rem;
-  background:
-    linear-gradient(145deg, rgba(255, 253, 248, 0.96), rgba(255, 243, 226, 0.96)),
-    url('/clay/ivory-card-clay.png') center / 640px 640px;
-  background-blend-mode: screen, multiply;
-  border: 1.5px solid rgba(161, 115, 74, 0.18);
+.login-clay-screen .login-clay-world {
+  background-position: center !important;
+  filter: saturate(0.95) brightness(1.03);
+}
+
+.login-clay-screen .login-panel-wrap {
+  width: min(100%, 35.5rem) !important;
+  max-width: 35.5rem !important;
+  padding-block: clamp(0.75rem, 3vh, 2rem);
+}
+
+.login-clay-screen .login-clay-main-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 36rem;
+  padding: clamp(3.1rem, 7vw, 4.75rem) clamp(2.6rem, 7vw, 4.8rem) clamp(2.6rem, 6vw, 3.9rem) !important;
+  border: 0 !important;
+  border-radius: clamp(2.8rem, 8vw, 4.5rem) !important;
+  background-color: #fbeccb !important;
+  background-image: url('/clay/login-clay-main-panel-v2.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
   box-shadow:
-    inset 2px 2px 0 rgba(255, 255, 255, 0.82),
-    0 8px 0 rgba(138, 98, 60, 0.12),
-    0 22px 44px rgba(62, 90, 58, 0.18);
+    0 12px 0 rgba(101, 69, 39, 0.12),
+    0 34px 54px rgba(54, 80, 55, 0.27) !important;
+  backdrop-filter: none !important;
 }
 
-@media (min-width: 768px) {
-  .clay-login-card { padding: 2.25rem; }
+.login-clay-screen .login-clay-main-panel > * {
+  position: relative;
+  z-index: 1;
 }
 
-/* 通用 3D 粘土按钮 */
-.clay-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
-  border: 1.5px solid rgba(145, 105, 69, 0.18);
-  box-shadow:
-    inset 2px 2px 0 rgba(255, 255, 255, 0.45),
-    0 4px 0 rgba(138, 96, 58, 0.18),
-    0 10px 18px rgba(100, 75, 50, 0.12);
+.login-clay-screen .login-clay-logo-wrap {
+  margin-bottom: 0.65rem;
 }
 
-.clay-btn:disabled {
-  cursor: not-allowed;
+.login-clay-screen .login-clay-logo {
+  padding: 0.2rem 0.55rem 0.48rem 0.28rem;
+  border-radius: 1.1rem;
+  filter: drop-shadow(0 7px 3px rgba(101, 64, 35, 0.25));
 }
 
-.clay-btn:not(:disabled):hover {
-  filter: saturate(1.05) brightness(1.02);
-  transform: translateY(-1px);
+.login-clay-screen .login-clay-logo span:first-child {
+  color: #825031 !important;
+  text-shadow:
+    0 1px 0 #fff8ea,
+    0 2px 0 #ecc69f,
+    0 4px 0 #b98055,
+    0 7px 7px rgba(91, 53, 31, 0.28) !important;
 }
 
-.clay-btn:not(:disabled):active {
-  transform: translateY(3px);
-  box-shadow:
-    inset 2px 3px 5px rgba(120, 80, 48, 0.14),
-    0 1px 0 rgba(138, 96, 58, 0.15),
-    0 4px 8px rgba(100, 75, 50, 0.1);
+.login-clay-welcome {
+  margin: 0 auto 1.65rem;
+  color: var(--login-ink);
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.86), 0 4px 5px rgba(95, 68, 42, 0.14);
 }
 
-.clay-btn-sm { padding: 0.55rem 1.15rem; font-size: 0.875rem; }
-.clay-btn-xs { padding: 0.45rem 0.9rem; font-size: 0.8rem; }
-
-.clay-btn-orange {
-  color: #a15b30;
-  background: linear-gradient(145deg, #fff0cd 0%, #ffd49d 45%, #ffc17d 100%);
+.login-clay-welcome p {
+  margin: 0 0 0.15rem;
+  color: #b45d31;
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
 }
 
-.clay-btn-blue {
-  color: #4f7294;
-  background: linear-gradient(145deg, #ecf7ff 0%, #d7eaff 45%, #c4e0ff 100%);
+.login-clay-welcome h1 {
+  margin: 0;
+  color: #33445f;
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 7vw, 3.15rem);
+  line-height: 1.05;
+  font-weight: 400;
+  letter-spacing: 0.13em;
+  text-shadow: 0 2px 0 #fff8ea, 0 4px 0 rgba(129, 86, 56, 0.2), 0 7px 9px rgba(68, 52, 38, 0.18);
 }
 
-.clay-btn-neutral {
-  color: #6b7c91;
-  background: linear-gradient(145deg, #ffffff 0%, #f3eadf 100%);
-}
-
-.clay-btn-primary {
-  color: #fffdf6;
-  font-size: 1rem;
-  letter-spacing: 0.05em;
-  text-shadow: 0 1px 2px rgba(139, 67, 18, 0.32);
-  background: linear-gradient(145deg, #ffb357 0%, #f08a48 55%, #e8783a 100%);
-  box-shadow:
-    inset 2px 2px 0 rgba(255, 255, 255, 0.35),
-    0 5px 0 rgba(176, 92, 40, 0.28),
-    0 14px 24px rgba(160, 86, 38, 0.22);
-}
-
-.clay-btn-primary:not(:disabled):active {
-  box-shadow:
-    inset 2px 3px 6px rgba(139, 67, 18, 0.2),
-    0 1px 0 rgba(176, 92, 40, 0.22),
-    0 5px 10px rgba(160, 86, 38, 0.16);
-}
-
-.clay-btn-danger {
-  color: #b33a2a;
-  background: linear-gradient(145deg, #fff0ed 0%, #ffd9d3 100%);
-}
-
-/* 粘土输入框：凹陷质感 */
-.clay-input,
-.clay-select {
-  width: 100%;
-  border-radius: 1.4rem;
-  color: #4a3f35;
-  background:
-    linear-gradient(145deg, rgba(255, 251, 245, 0.98), rgba(249, 238, 220, 0.98)),
-    url('/clay/ivory-card-clay.png') center / 280px 280px;
-  background-blend-mode: screen, multiply;
-  border: 1.5px solid rgba(161, 115, 74, 0.16);
-  box-shadow:
-    inset 2px 3px 8px rgba(131, 92, 58, 0.1),
-    0 2px 0 rgba(255, 255, 255, 0.7);
-  outline: none;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
-}
-
-.clay-input:focus,
-.clay-select:focus {
-  border-color: rgba(240, 154, 89, 0.55);
-  box-shadow:
-    inset 2px 3px 8px rgba(131, 92, 58, 0.1),
-    0 0 0 4px rgba(240, 154, 89, 0.12),
-    0 2px 0 rgba(255, 255, 255, 0.7);
-}
-
-.clay-select {
-  appearance: none;
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%239C7A5C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
-    linear-gradient(145deg, rgba(255, 251, 245, 0.98), rgba(249, 238, 220, 0.98)),
-    url('/clay/ivory-card-clay.png');
-  background-repeat: no-repeat, repeat, repeat;
-  background-position: right 1rem center, center, center;
-  background-size: 0.85rem auto, auto, 280px 280px;
-  background-blend-mode: normal, screen, multiply;
-  padding-right: 2.5rem;
-}
-
-/* 粘土提示卡片 */
-.clay-alert {
-  border-radius: 1.4rem;
-  padding: 0.85rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 700;
-  line-height: 1.5;
-  border: 1.5px solid rgba(145, 105, 69, 0.12);
-  box-shadow:
-    inset 2px 2px 0 rgba(255, 255, 255, 0.55),
-    0 3px 0 rgba(138, 96, 58, 0.08),
-    0 8px 14px rgba(100, 75, 50, 0.08);
-}
-
-.clay-alert-error {
-  color: #c45a48;
-  background: linear-gradient(145deg, #fff5f3 0%, #ffe8e4 100%);
-}
-
-.clay-alert-success {
-  color: #3d8b6a;
-  background: linear-gradient(145deg, #f0fbf5 0%, #e0f5eb 100%);
-}
-
-.clay-alert-warning {
-  color: #b36b2e;
-  background: linear-gradient(145deg, #fff8ef 0%, #ffecd7 100%);
-}
-
-/* 管理空间列表项 */
-.clay-manage-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 1rem;
-  border-radius: 1.4rem;
-  background:
-    linear-gradient(145deg, rgba(255, 253, 248, 0.95), rgba(255, 242, 225, 0.95)),
-    url('/clay/ivory-card-clay.png') center / 320px 320px;
-  background-blend-mode: screen, multiply;
-  border: 1.5px solid rgba(161, 115, 74, 0.12);
-  box-shadow:
-    inset 2px 2px 0 rgba(255, 255, 255, 0.7),
-    0 3px 0 rgba(138, 96, 58, 0.08),
-    0 9px 16px rgba(100, 75, 50, 0.08);
-}
-
-.clay-empty-state {
-  border-radius: 1.4rem;
-  padding: 1rem;
-  text-align: center;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #8b7d6e;
-  background: linear-gradient(145deg, rgba(255, 253, 248, 0.9), rgba(255, 243, 226, 0.9));
-  border: 1.5px dashed rgba(161, 115, 74, 0.18);
-}
-
-/* 帮助手册链接 */
-.clay-help-link {
+.login-clay-welcome span {
   display: block;
-  padding-top: 0.25rem;
-  text-align: center;
-  font-size: 0.75rem;
+  margin-top: 0.65rem;
+  color: #7e7c78;
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #8b7d6e;
-  text-decoration: none;
-  transition: color 160ms ease;
+  letter-spacing: 0.045em;
+  line-height: 1.65;
 }
 
-.clay-help-link:hover {
-  color: #a15b30;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-/* 让登录页已有 clay 背景与新增卡片视觉统一 */
-.login-panel-wrap {
-  max-width: 34rem;
-}
-
-@media (min-width: 768px) {
-  .login-panel-wrap { max-width: 38rem; }
-}
-
-/* 覆盖旧版 login-clay-card 的扁平阴影，确保新卡片立体感最强 */
-.clay-login-card.login-clay-card,
-.login-clay-card.clay-login-card {
+.login-clay-screen .login-clay-switcher {
+  position: relative;
+  z-index: 2;
+  width: fit-content;
+  align-items: center;
+  min-height: 4.2rem;
+  margin-inline: auto;
+  padding: 0.48rem;
+  border-radius: 2rem;
+  background: linear-gradient(145deg, rgba(247, 226, 191, 0.72), rgba(255, 252, 243, 0.8));
   box-shadow:
-    inset 2px 2px 0 rgba(255, 255, 255, 0.82),
-    0 8px 0 rgba(138, 98, 60, 0.12),
-    0 22px 44px rgba(62, 90, 58, 0.18) !important;
+    inset 2px 3px 7px rgba(112, 75, 42, 0.14),
+    inset -2px -2px 5px rgba(255, 255, 255, 0.82),
+    0 5px 0 rgba(122, 79, 44, 0.12),
+    0 12px 17px rgba(98, 71, 45, 0.12);
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab {
+  min-height: 3.1rem;
+  border: 0 !important;
+  border-radius: 1.55rem !important;
+  padding: 0.7rem 1.15rem !important;
+  background-color: #fff4df !important;
+  background-image: url('/clay/space-focus-keycap-v1.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 142% 175% !important;
+  box-shadow: none !important;
+  text-shadow: 0 1px 0 rgba(255, 252, 244, 0.9), 0 2px 2px rgba(118, 75, 46, 0.17);
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab-create {
+  color: #a5522c !important;
+  filter: sepia(0.2) saturate(1.4) hue-rotate(340deg);
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab-manage {
+  color: #4f6c8e !important;
+  filter: saturate(0.82) hue-rotate(146deg) brightness(1.04);
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab-return {
+  color: #6b6470 !important;
+  background-size: 154% 194% !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab:hover {
+  transform: translateY(-2px);
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab:active:not(:disabled),
+.login-clay-screen .login-clay-card .login-clay-primary-action:active:not(:disabled),
+.login-clay-screen .login-clay-card .login-clay-danger-action:active:not(:disabled) {
+  transform: translateY(3px) scale(0.985) !important;
+  filter: brightness(0.97);
+}
+
+.login-clay-screen .login-clay-field-label > span {
+  color: var(--login-ink) !important;
+  letter-spacing: 0.035em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.86), 0 2px 2px rgba(91, 65, 40, 0.13);
+}
+
+.login-clay-screen .login-clay-card .login-clay-inset-field {
+  min-height: 4.9rem;
+  border: 0 !important;
+  border-radius: 1.65rem !important;
+  background-color: #fff5df !important;
+  background-image: url('/clay/space-focus-inset-card-v1.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  box-shadow: none !important;
+  color: #47556b !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  caret-color: #c56830;
+}
+
+.login-clay-screen .login-clay-card select.login-clay-inset-field {
+  appearance: none;
+  padding-right: 3.75rem !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #bd6639 50%),
+    linear-gradient(135deg, #bd6639 50%, transparent 50%),
+    url('/clay/space-focus-inset-card-v1.png') !important;
+  background-position: calc(100% - 1.65rem) 51%, calc(100% - 1.2rem) 51%, center !important;
+  background-size: 0.46rem 0.46rem, 0.46rem 0.46rem, 100% 100% !important;
+  background-repeat: no-repeat !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-inset-field:focus {
+  outline: none;
+  filter: brightness(0.985) saturate(1.05);
+}
+
+.login-clay-screen .login-clay-card .login-clay-primary-action {
+  min-height: 5.45rem;
+  margin-top: 0.55rem;
+  border: 0 !important;
+  border-radius: 2rem !important;
+  background-color: #ff9834 !important;
+  background-image: url('/clay/space-focus-primary-button-v1.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  box-shadow: none !important;
+  color: #fffdf5 !important;
+  font-size: 1.18rem;
+  letter-spacing: 0.16em;
+  text-shadow: 0 2px 0 rgba(132, 69, 25, 0.36), 0 4px 7px rgba(120, 58, 23, 0.23);
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.login-clay-screen .login-clay-card .login-clay-primary-action:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.008);
+  filter: brightness(1.04) saturate(1.05);
+}
+
+.login-clay-screen .login-clay-card .login-clay-primary-action:disabled {
+  filter: saturate(1.06) brightness(1.03);
+  opacity: 0.98 !important;
+}
+
+.login-clay-screen .login-clay-message,
+.login-clay-screen .login-clay-warning,
+.login-clay-screen .login-clay-space-row {
+  border: 0 !important;
+  background-color: #fff1dc !important;
+  background-image: url('/clay/space-focus-inset-card-v1.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  box-shadow: none !important;
+}
+
+.login-clay-screen .login-clay-error { color: #c65d38 !important; }
+.login-clay-screen .login-clay-success { color: #4d7b54 !important; }
+
+.login-clay-screen .login-clay-card .login-clay-danger-action {
+  border: 0 !important;
+  background: linear-gradient(145deg, #ffd8ce, #f2a58e) !important;
+  box-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.48),
+    inset -4px -5px 0 rgba(168, 76, 52, 0.14),
+    0 5px 0 rgba(128, 63, 45, 0.19),
+    0 10px 12px rgba(95, 56, 39, 0.14) !important;
+  color: #9d482f !important;
+}
+
+.login-clay-screen .login-clay-help {
+  color: #8c755e !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.login-clay-screen .login-clay-footer {
+  color: rgba(68, 86, 91, 0.72) !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+@media (max-width: 640px) {
+  .login-clay-screen { padding: 0.9rem !important; }
+  .login-clay-screen .login-panel-wrap { width: min(100%, 31rem) !important; }
+  .login-clay-screen .login-clay-main-panel {
+    min-height: 0;
+    padding: 2.6rem 2rem 2.4rem !important;
+    border-radius: 3.2rem !important;
+  }
+  .login-clay-screen .login-clay-logo-wrap { margin-bottom: 1.65rem; }
+  .login-clay-screen .login-clay-welcome { margin-top: -1rem; margin-bottom: 1.35rem; }
+  .login-clay-screen .login-clay-welcome span { font-size: 0.72rem; }
+  .login-clay-screen .login-clay-card .login-clay-inset-field { min-height: 4.45rem; }
+  .login-clay-screen .login-clay-card .login-clay-primary-action { min-height: 5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-clay-screen .login-clay-card .login-clay-tab,
+  .login-clay-screen .login-clay-card .login-clay-primary-action { transition: none; }
 }
