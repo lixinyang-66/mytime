@@ -90,7 +90,7 @@ export default function LoginForm() {
     }
 
     const confirmed = window.confirm(
-      `确定删除空间“${space.name}”吗？该空间下的所有项目、计划、时间记录和复盘都会被永久删除。`,
+      `确定删除空间“${space.name}”吗？该空间下的所有项目、计划、记录和复盘都会被永久删除。`,
     );
     if (!confirmed) return;
 
