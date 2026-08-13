@@ -152,6 +152,11 @@ export default function LoginForm() {
               <span className="absolute right-0 -bottom-1 h-2.5 w-2.5 rounded-full bg-[#BFECCF]" aria-hidden="true" />
             </div>
           </div>
+          <div className="login-clay-welcome text-center">
+            <p>欢迎回到你的</p>
+            <h1>专注空间</h1>
+            <span>把今天的一小步，慢慢捏成想要的生活。</span>
+          </div>
           <div className="login-clay-switcher mb-5 flex justify-center gap-2">
             {panel === 'login' ? (
               <>

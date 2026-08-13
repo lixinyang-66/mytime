@@ -984,7 +984,7 @@ main .rounded-full {
 }
 
 .login-clay-screen .login-clay-logo-wrap {
-  margin-bottom: 2.2rem;
+  margin-bottom: 0.65rem;
 }
 
 .login-clay-screen .login-clay-logo {
@@ -1002,12 +1002,47 @@ main .rounded-full {
     0 7px 7px rgba(91, 53, 31, 0.28) !important;
 }
 
+.login-clay-welcome {
+  margin: 0 auto 1.65rem;
+  color: var(--login-ink);
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.86), 0 4px 5px rgba(95, 68, 42, 0.14);
+}
+
+.login-clay-welcome p {
+  margin: 0 0 0.15rem;
+  color: #b45d31;
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.login-clay-welcome h1 {
+  margin: 0;
+  color: #33445f;
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 7vw, 3.15rem);
+  line-height: 1.05;
+  font-weight: 400;
+  letter-spacing: 0.13em;
+  text-shadow: 0 2px 0 #fff8ea, 0 4px 0 rgba(129, 86, 56, 0.2), 0 7px 9px rgba(68, 52, 38, 0.18);
+}
+
+.login-clay-welcome span {
+  display: block;
+  margin-top: 0.65rem;
+  color: #7e7c78;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  line-height: 1.65;
+}
+
 .login-clay-screen .login-clay-switcher {
   position: relative;
   z-index: 2;
   width: fit-content;
   align-items: center;
-  min-height: 4.45rem;
+  min-height: 4.2rem;
   margin-inline: auto;
   padding: 0.48rem;
   border-radius: 2rem;
@@ -1020,7 +1055,7 @@ main .rounded-full {
 }
 
 .login-clay-screen .login-clay-card .login-clay-tab {
-  min-height: 3.35rem;
+  min-height: 3.1rem;
   border: 0 !important;
   border-radius: 1.55rem !important;
   padding: 0.7rem 1.15rem !important;
@@ -1080,6 +1115,18 @@ main .rounded-full {
   font-weight: 700;
   letter-spacing: 0.02em;
   caret-color: #c56830;
+}
+
+.login-clay-screen .login-clay-card select.login-clay-inset-field {
+  appearance: none;
+  padding-right: 3.75rem !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #bd6639 50%),
+    linear-gradient(135deg, #bd6639 50%, transparent 50%),
+    url('/clay/space-focus-inset-card-v1.png') !important;
+  background-position: calc(100% - 1.65rem) 51%, calc(100% - 1.2rem) 51%, center !important;
+  background-size: 0.46rem 0.46rem, 0.46rem 0.46rem, 100% 100% !important;
+  background-repeat: no-repeat !important;
 }
 
 .login-clay-screen .login-clay-card .login-clay-inset-field:focus {
@@ -1160,6 +1207,8 @@ main .rounded-full {
     border-radius: 3.2rem !important;
   }
   .login-clay-screen .login-clay-logo-wrap { margin-bottom: 1.65rem; }
+  .login-clay-screen .login-clay-welcome { margin-top: -1rem; margin-bottom: 1.35rem; }
+  .login-clay-screen .login-clay-welcome span { font-size: 0.72rem; }
   .login-clay-screen .login-clay-card .login-clay-inset-field { min-height: 4.45rem; }
   .login-clay-screen .login-clay-card .login-clay-primary-action { min-height: 5rem; }
 }
