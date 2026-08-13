@@ -25,18 +25,23 @@ export default function LoginForm() {
 
   async function loadSpaces() {
     setSpaceLoading(true);
-    const response = await fetch('/api/spaces');
-    const payload = await response.json().catch(() => []);
-    setSpaceLoading(false);
-    if (response.ok) {
-      setSpaces(payload);
-      setSelectedSpaceId((currentId) => (
-        payload.some((space: Space) => space.id === currentId)
-          ? currentId
-          : payload[0]?.id || null
-      ));
-    } else {
-      setError(payload.error || '读取空间列表失败。');
+    try {
+      const response = await fetch('/api/spaces');
+      const payload = await response.json().catch(() => []);
+      if (response.ok) {
+        setSpaces(payload);
+        setSelectedSpaceId((currentId) => (
+          payload.some((space: Space) => space.id === currentId)
+            ? currentId
+            : payload[0]?.id || null
+        ));
+      } else {
+        setError(payload.error || '读取空间列表失败。');
+      }
+    } catch {
+      setError('读取空间列表失败，请稍后重试。');
+    } finally {
+      setSpaceLoading(false);
     }
   }
 
@@ -118,10 +123,10 @@ export default function LoginForm() {
 
   if (spaceLoading && spaces.length === 0) {
     return (
-      <main className="relative min-h-screen overflow-hidden px-5 py-8 text-ink">
+      <main className="login-clay-screen relative min-h-screen overflow-hidden px-5 py-8 text-ink">
         <LoginClayCountryside />
         <div className="login-panel-wrap relative z-10 mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-md place-items-center">
-          <section className="login-clay-card rounded-[2.2rem] bg-white/90 px-7 py-6 text-center shadow-soft ring-1 ring-white/70 backdrop-blur-xl">
+          <section className="login-clay-card login-clay-main-panel rounded-[2.2rem] bg-white/90 px-7 py-6 text-center shadow-soft ring-1 ring-white/70 backdrop-blur-xl">
             <p className="font-black text-slate-600">正在进入 MyTime…</p>
           </section>
         </div>
@@ -130,12 +135,12 @@ export default function LoginForm() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden px-5 py-8 text-ink">
+    <main className="login-clay-screen relative min-h-screen overflow-hidden px-5 py-8 text-ink">
       <LoginClayCountryside />
       <div className="login-panel-wrap relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
-        <section className="login-clay-card rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white/70 backdrop-blur-xl">
-          <div className="mb-6 flex justify-center">
-            <div className="relative inline-block rotate-1" aria-label="MyTime">
+        <section className="login-clay-card login-clay-main-panel rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white/70 backdrop-blur-xl">
+          <div className="login-clay-logo-wrap mb-6 flex justify-center">
+            <div className="login-clay-logo relative inline-block rotate-1" aria-label="MyTime">
               <span
                 className="relative z-10 inline-block text-[2.8rem] font-black leading-none tracking-[-0.12em] text-[#2F405A]"
                 style={{ fontFamily: '"Caveat", "Patrick Hand", cursive', textShadow: '3px 3px 0 #FFFAF0, 6px 6px 0 #FFDDA7, 9px 9px 18px rgba(193,125,73,0.18)' }}
@@ -147,37 +152,37 @@ export default function LoginForm() {
               <span className="absolute right-0 -bottom-1 h-2.5 w-2.5 rounded-full bg-[#BFECCF]" aria-hidden="true" />
             </div>
           </div>
-          <div className="mb-5 flex justify-center gap-2">
+          <div className="login-clay-switcher mb-5 flex justify-center gap-2">
             {panel === 'login' ? (
               <>
-                <button onClick={() => openPanel('create')} className="rounded-full bg-[linear-gradient(135deg,#FFF0CD,#FFD49D)] px-4 py-2 text-sm font-black text-[#A15B30] shadow-[0_5px_12px_rgba(237,164,89,0.12)] ring-1 ring-[#FFE0B5]">
+                <button onClick={() => openPanel('create')} className="login-clay-tab login-clay-tab-create rounded-full bg-[linear-gradient(135deg,#FFF0CD,#FFD49D)] px-4 py-2 text-sm font-black text-[#A15B30] shadow-[0_5px_12px_rgba(237,164,89,0.12)] ring-1 ring-[#FFE0B5]">
                   创建空间
                 </button>
-                <button onClick={() => openPanel('manage')} className="rounded-full bg-[linear-gradient(135deg,#ECF7FF,#D7EAFF)] px-4 py-2 text-sm font-black text-[#4F7294] shadow-[0_5px_12px_rgba(126,174,211,0.12)] ring-1 ring-[#D3E8F8]">
+                <button onClick={() => openPanel('manage')} className="login-clay-tab login-clay-tab-manage rounded-full bg-[linear-gradient(135deg,#ECF7FF,#D7EAFF)] px-4 py-2 text-sm font-black text-[#4F7294] shadow-[0_5px_12px_rgba(126,174,211,0.12)] ring-1 ring-[#D3E8F8]">
                   管理空间
                 </button>
               </>
             ) : (
-              <button onClick={() => openPanel('login')} className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
+              <button onClick={() => openPanel('login')} className="login-clay-tab login-clay-tab-return rounded-full bg-white px-4 py-2 text-sm font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
                 返回登录
               </button>
             )}
           </div>
 
-          {error ? <p className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{error}</p> : null}
-          {success ? <p className="mb-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{success}</p> : null}
+          {error ? <p className="login-clay-message login-clay-error mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{error}</p> : null}
+          {success ? <p className="login-clay-message login-clay-success mb-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{success}</p> : null}
 
           {panel === 'create' ? (
-            <form onSubmit={handleCreateSpace} className="space-y-4">
+            <form onSubmit={handleCreateSpace} className="login-clay-form space-y-4">
               <Input label="空间名称" value={createName} onChange={setCreateName} />
               <Input label="空间密码" type="password" value={createPassword} onChange={setCreatePassword} />
-              <button disabled={loading} className="w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{loading ? '正在创建...' : '创建空间'}</button>
+              <button disabled={loading} className="login-clay-primary-action w-full rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-50">{loading ? '正在创建...' : '创建空间'}</button>
             </form>
           ) : null}
 
           {panel === 'manage' ? (
-            <div className="space-y-4">
-              <div className="rounded-2xl bg-red-50 p-4 text-sm font-bold leading-6 text-red-700">
+            <div className="login-clay-manage space-y-4">
+              <div className="login-clay-warning rounded-2xl bg-red-50 p-4 text-sm font-bold leading-6 text-red-700">
                 删除空间会同时永久删除其中的项目、计划、时间记录和复盘数据。
               </div>
               <Input label="开发者管理密码" type="password" value={adminPassword} onChange={setAdminPassword} />
@@ -187,7 +192,7 @@ export default function LoginForm() {
                   <p className="rounded-2xl bg-cream/70 p-4 text-sm font-bold text-slate-500">系统中暂无空间。</p>
                 ) : null}
                 {spaces.map((space) => (
-                  <div key={space.id} className="flex items-center justify-between gap-3 rounded-2xl bg-cream/70 p-4 ring-1 ring-orange-100">
+                  <div key={space.id} className="login-clay-space-row flex items-center justify-between gap-3 rounded-2xl bg-cream/70 p-4 ring-1 ring-orange-100">
                     <div className="min-w-0">
                       <p className="truncate font-black text-slate-700">{space.name}</p>
                       <p className="mt-1 text-xs font-bold text-slate-400">空间 ID：{space.id}</p>
@@ -196,7 +201,7 @@ export default function LoginForm() {
                       type="button"
                       disabled={deletingSpaceId !== null}
                       onClick={() => handleDeleteSpace(space)}
-                      className="shrink-0 rounded-xl bg-red-100 px-4 py-2 text-sm font-black text-red-700 disabled:opacity-50"
+                      className="login-clay-danger-action shrink-0 rounded-xl bg-red-100 px-4 py-2 text-sm font-black text-red-700 disabled:opacity-50"
                     >
                       {deletingSpaceId === space.id ? '删除中...' : '删除'}
                     </button>
@@ -207,25 +212,25 @@ export default function LoginForm() {
           ) : null}
 
           {panel === 'login' ? (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <label className="block">
+            <form onSubmit={handleLogin} className="login-clay-form space-y-4">
+              <label className="login-clay-field-label block">
                 <span className="mb-2 block text-sm font-black text-slate-700">选择空间</span>
-                <select value={selectedSpaceId || ''} onChange={(event) => setSelectedSpaceId(Number(event.target.value))} className="w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100">
+                <select value={selectedSpaceId || ''} onChange={(event) => setSelectedSpaceId(Number(event.target.value))} className="login-clay-inset-field w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-4 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100">
                   {spaceLoading ? <option>正在读取空间...</option> : null}
                   {!spaceLoading && spaces.length === 0 ? <option value="">暂无空间，请先创建</option> : null}
                   {spaces.map((space) => (<option key={space.id} value={space.id}>{space.name}</option>))}
                 </select>
               </label>
               <Input label="空间密码" type="password" value={password} onChange={setPassword} />
-              <button type="submit" disabled={loading || !password.trim() || !selectedSpaceId} className="w-full rounded-2xl bg-ink px-5 py-4 text-base font-black text-white shadow-lg shadow-slate-300 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
+              <button type="submit" disabled={loading || !password.trim() || !selectedSpaceId} className="login-clay-primary-action w-full rounded-2xl bg-ink px-5 py-4 text-base font-black text-white shadow-lg shadow-slate-300 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
                 {loading ? '正在进入...' : '进入空间'}
               </button>
-              <a href="/help" className="block pt-1 text-center text-xs font-semibold tracking-[0.08em] text-slate-400 underline-offset-4 transition hover:text-[#A15B30] hover:underline">帮助手册</a>
+              <a href="/help" className="login-clay-help block pt-1 text-center text-xs font-semibold tracking-[0.08em] text-slate-400 underline-offset-4 transition hover:text-[#A15B30] hover:underline">帮助手册</a>
             </form>
           ) : null}
         </section>
       </div>
-      <footer className="absolute bottom-5 left-0 right-0 z-10 text-center text-[11px] font-bold tracking-[0.08em] text-[#6B7C91]/75">MyTime © 2026</footer>
+      <footer className="login-clay-footer absolute bottom-5 left-0 right-0 z-10 text-center text-[11px] font-bold tracking-[0.08em] text-[#6B7C91]/75">MyTime © 2026</footer>
     </main>
   );
 }
@@ -282,9 +287,9 @@ function ClaySheep({ className, grazing = false }: { className: string; grazing?
 
 function Input({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
   return (
-    <label className="block">
+    <label className="login-clay-field-label block">
       <span className="mb-2 block text-sm font-black text-slate-700">{label}</span>
-      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-3 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
+      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="login-clay-inset-field w-full rounded-2xl border border-orange-100 bg-cream/70 px-4 py-3 outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100" />
     </label>
   );
 }
