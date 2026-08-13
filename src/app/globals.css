@@ -941,21 +941,35 @@ main .rounded-full {
  * 不改变任何功能、文案与交互逻辑。
  * ========================================================= */
 
+/* 粘土颗粒纹理变量 —— 真实粗糙感的来源
+   --clay-grain   细沙粒白色噪声（screen 混合 → 颗粒高光）
+   --clay-speckle 粗颗粒棕色噪声（multiply 混合 → 粗糙暗斑）
+   两层叠加让表面像未抛光的粘土，粗糙、哑光、有颗粒感 */
+.clay-login-card,
+.clay-btn,
+.clay-alert,
+.clay-manage-item,
+.clay-input,
+.clay-select {
+  --clay-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='2.6' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  --clay-speckle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.47 0 0 0 0 0.33 0 0 0 0 0.18 0 0 0 0.85 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 /* 登录主卡片：厚实隆起的 3D 雕塑感
    —— 实色厚度投影(0 14px 0 / 0 21px 0)制造隆起底座，
-      顶部内高光 + 底部内暗营造圆润鼓包，噪声纹理叠加粘土颗粒。 */
+      顶部内高光 + 底部内暗营造圆润鼓包，双层颗粒纹理让表面粗糙。 */
 .clay-login-card {
   position: relative;
   padding: 1.75rem;
   border-radius: 2.8rem;
   background:
-    radial-gradient(130% 100% at 50% -5%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 247, 233, 0) 52%),
+    radial-gradient(130% 100% at 50% -5%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 247, 233, 0) 52%),
     linear-gradient(168deg, #fffdf6 0%, #ffeecf 40%, #ffdca9 74%, #ffd194 100%);
   border: 2px solid rgba(255, 255, 255, 0.6);
   box-shadow:
-    inset 0 12px 18px rgba(255, 255, 255, 0.9),
+    inset 0 12px 18px rgba(255, 255, 255, 0.75),
     inset 0 -16px 22px rgba(212, 145, 74, 0.32),
-    inset 3px 3px 8px rgba(255, 255, 255, 0.65),
+    inset 3px 3px 8px rgba(255, 255, 255, 0.55),
     0 5px 0 #fff2da,
     0 14px 0 #e9b878,
     0 21px 0 #d7a064,
@@ -967,9 +981,11 @@ main .rounded-full {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  opacity: 0.38;
-  mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.42 0 0 0 0 0.3 0 0 0 0 0.16 0 0 0 0.45 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.55;
+  background-image: var(--clay-grain), var(--clay-speckle);
+  background-blend-mode: screen, multiply;
+  background-repeat: repeat, repeat;
+  background-size: 200px 200px, 200px 200px;
 }
 
 @media (min-width: 768px) {
@@ -1001,9 +1017,11 @@ main .rounded-full {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  opacity: 0.32;
-  mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.42 0 0 0 0 0.3 0 0 0 0 0.16 0 0 0 0.45 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.55;
+  background-image: var(--clay-grain), var(--clay-speckle);
+  background-blend-mode: screen, multiply;
+  background-repeat: repeat, repeat;
+  background-size: 160px 160px, 160px 160px;
 }
 .clay-btn:disabled {
   cursor: not-allowed;
@@ -1059,13 +1077,19 @@ main .rounded-full {
   --clay-btn-depth: #e29a8e;
 }
 
-/* 粘土输入框：真的“挖进”粘土里 —— 上暗下亮渐变 + 强内阴影 */
+/* 粘土输入框：真的“挖进”粘土里 —— 上暗下亮渐变 + 强内阴影 + 粗糙坑壁颗粒 */
 .clay-input,
 .clay-select {
   width: 100%;
   border-radius: 1.6rem;
   color: #4a3f35;
-  background: linear-gradient(180deg, #f3e6d3 0%, #faf0e1 34%, #fdf7ec 100%);
+  background-image:
+    var(--clay-grain),
+    var(--clay-speckle),
+    linear-gradient(180deg, #f3e6d3 0%, #faf0e1 34%, #fdf7ec 100%);
+  background-blend-mode: screen, multiply, normal;
+  background-repeat: repeat, repeat, repeat;
+  background-size: 140px 140px, 140px 140px, auto;
   border: 2px solid rgba(160, 115, 70, 0.18);
   box-shadow:
     inset 0 6px 12px rgba(131, 92, 58, 0.28),
@@ -1088,14 +1112,17 @@ main .rounded-full {
   appearance: none;
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%239C7A5C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
+    var(--clay-grain),
+    var(--clay-speckle),
     linear-gradient(180deg, #f3e6d3 0%, #faf0e1 34%, #fdf7ec 100%);
-  background-repeat: no-repeat, repeat;
-  background-position: right 1rem center, center;
-  background-size: 0.85rem auto, auto;
+  background-blend-mode: normal, screen, multiply, normal;
+  background-repeat: no-repeat, repeat, repeat, repeat;
+  background-position: right 1rem center, center, center, center;
+  background-size: 0.85rem auto, 140px 140px, 140px 140px, auto;
   padding-right: 2.5rem;
 }
 
-/* 粘土提示卡片：微微隆起的小气泡 */
+/* 粘土提示卡片：微微隆起的小气泡 + 粗糙颗粒表面 */
 .clay-alert {
   position: relative;
   border-radius: 1.5rem;
@@ -1109,6 +1136,18 @@ main .rounded-full {
     inset 0 -5px 8px rgba(140, 90, 50, 0.14),
     0 3px 0 rgba(138, 96, 58, 0.16),
     0 9px 14px rgba(100, 75, 50, 0.1);
+}
+.clay-alert::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.45;
+  background-image: var(--clay-grain), var(--clay-speckle);
+  background-blend-mode: screen, multiply;
+  background-repeat: repeat, repeat;
+  background-size: 120px 120px, 120px 120px;
 }
 
 .clay-alert-error {
@@ -1126,7 +1165,7 @@ main .rounded-full {
   background: linear-gradient(145deg, #fff8ef 0%, #ffecd7 100%);
 }
 
-/* 管理空间列表项：小粘土块 */
+/* 管理空间列表项：小粘土块 + 粗糙颗粒表面 */
 .clay-manage-item {
   position: relative;
   display: flex;
@@ -1144,6 +1183,18 @@ main .rounded-full {
     inset 0 -6px 10px rgba(212, 145, 74, 0.22),
     0 4px 0 #e9b878,
     0 10px 18px rgba(100, 75, 50, 0.14);
+}
+.clay-manage-item::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: var(--clay-grain), var(--clay-speckle);
+  background-blend-mode: screen, multiply;
+  background-repeat: repeat, repeat;
+  background-size: 150px 150px, 150px 150px;
 }
 
 .clay-empty-state {
