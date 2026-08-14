@@ -531,7 +531,7 @@ function SpaceView({ space, projects, projectPhases, moods, progressAssessments,
             ) : null}
           </div>
         </div>
-        <div className="mt-4 rounded-[1.6rem] border border-orange-100 bg-gradient-to-br from-amber-50 via-rose-50 to-sky-50 p-3">
+        <div className="space-mood-tray mt-4 rounded-[1.6rem] border border-orange-100 bg-gradient-to-br from-amber-50 via-rose-50 to-sky-50 p-3">
           <div className="flex items-center gap-2">
             <div className="mood-picker-grid grid grid-cols-4 gap-2">
               {visibleMoods.map((mood) => {
@@ -923,10 +923,10 @@ function SpaceGanttOverview({ projects, phases, progressAssessments, deletingPro
                         : phaseColors[(projectIndex + phaseIndex) % phaseColors.length];
                     return (
                       <span key={phase.id} title={phase.name} className={`space-project-phase absolute top-1 flex h-7 items-center overflow-hidden rounded-md px-1.5 text-[10px] font-black leading-none whitespace-nowrap ${tone} ${phase.status === 'pending' ? 'opacity-75' : ''}`} style={{ left: `${position(phase.start_date)}%`, width: `${phaseWidth}%` }}>
-                        {phaseWidth >= 7 ? phase.name : null}
+                        {phaseWidth >= 7 ? <span className="space-project-phase-label">{phase.name}</span> : null}
                       </span>
                     );
-                  }) : <span className={`space-project-phase absolute top-1 flex h-7 items-center overflow-hidden rounded-md px-2 text-[10px] font-black text-slate-700 ${phaseColors[projectIndex % phaseColors.length]}`} style={{ left: `${position(project.start_date)}%`, width: `${width(project.start_date, project.end_date)}%` }}>{project.name}</span>}
+                  }) : <span className={`space-project-phase absolute top-1 flex h-7 items-center overflow-hidden rounded-md px-2 text-[10px] font-black text-slate-700 ${phaseColors[projectIndex % phaseColors.length]}`} style={{ left: `${position(project.start_date)}%`, width: `${width(project.start_date, project.end_date)}%` }}><span className="space-project-phase-label">{project.name}</span></span>}
                 </div>
               </div>
             </SwipeGanttProjectRow>
