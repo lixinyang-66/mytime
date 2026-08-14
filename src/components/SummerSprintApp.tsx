@@ -489,7 +489,7 @@ function SpaceView({ space, projects, projectPhases, moods, progressAssessments,
   }
 
   return (
-    <div className="space-dashboard-clay clay-raised-surface rounded-[2.5rem] bg-[#fff7ea] p-5 shadow-soft sm:p-8">
+    <div className="space-dashboard-clay rounded-[2.5rem] bg-[#fff7ea] p-5 sm:p-8">
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <div title={space.name}>
