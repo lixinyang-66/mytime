@@ -2049,6 +2049,38 @@ main .rounded-full {
     0 12px 17px rgba(96, 65, 46, .18) !important;
 }
 
+/* 心情图案作为压在黏土底座中的印章，而不是独立的立体公仔。 */
+.space-dashboard-clay .mood-stamp {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  padding: 0.38rem;
+  border: 1px solid rgba(182, 99, 54, 0.24);
+  border-radius: 0.85rem;
+  background: linear-gradient(145deg, #fffefa, #f6e5ce);
+  box-shadow:
+    inset 3px 3px 5px rgba(122, 78, 46, 0.14),
+    inset -2px -2px 2px rgba(255, 255, 255, 0.9),
+    0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.space-dashboard-clay .mood-stamp::after {
+  position: absolute;
+  inset: 0.38rem;
+  z-index: 1;
+  border-radius: 0.62rem;
+  content: '';
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.58), inset 0 3px 7px rgba(127,81,47,.1);
+  pointer-events: none;
+}
+
+.space-dashboard-clay .mood-stamp > img {
+  display: block;
+  position: relative;
+  z-index: 0;
+  filter: saturate(1.12) contrast(1.04) drop-shadow(0 2px 1px rgba(113,73,48,.18));
+}
+
 .space-dashboard-clay .mood-picker-grid + button {
   border-color: rgba(208, 104, 57, .3) !important;
   background-image: linear-gradient(145deg, #ffe9d9, #ffa77e) !important;
@@ -2113,4 +2145,127 @@ main .rounded-full {
 @media (max-width: 640px) {
   .space-dashboard-clay { padding: 0.55rem !important; }
   .space-dashboard-clay > section { box-shadow: inset 2px 2px 1px rgba(255,255,255,.88), inset -5px -7px 10px rgba(202,116,65,.13), 0 6px 0 rgba(176,85,42,.18), 0 13px 20px rgba(79,72,51,.18) !important; }
+}
+
+/* 空间页凸起黏土：以厚实体边和接触阴影塑形，避免描边卡片感。 */
+.space-dashboard-clay > section {
+  overflow: visible;
+  border: 3px solid rgba(159, 103, 63, .34) !important;
+  outline: 1px solid rgba(255, 253, 245, .72);
+  outline-offset: -5px;
+  border-radius: 2.55rem 2.32rem 2.48rem 2.4rem !important;
+  background-color: #fff7e8 !important;
+  background-image:
+    radial-gradient(ellipse at 20% 7%, rgba(255,255,255,.98) 0%, rgba(255,255,255,.52) 18%, transparent 43%),
+    linear-gradient(145deg, rgba(255,255,255,.38), rgba(255,224,184,.24)),
+    url('/clay/ivory-card-clay.png') !important;
+  background-size: auto, auto, 520px 520px !important;
+  background-blend-mode: screen, normal, multiply;
+  box-shadow:
+    inset 0 4px 2px rgba(255,255,255,.96),
+    inset -10px -12px 17px rgba(139,82,43,.18),
+    0 8px 0 rgba(174,111,62,.38),
+    0 16px 24px rgba(76,57,39,.22) !important;
+}
+
+.space-dashboard-clay > header > nav,
+.space-dashboard-clay > header > button {
+  border: 2px solid rgba(185, 125, 85, .42) !important;
+  outline: 1px solid rgba(255,255,255,.62);
+  outline-offset: -4px;
+  background-image: linear-gradient(145deg, #fffef8 0%, #f7d4aa 100%) !important;
+  box-shadow:
+    inset 0 3px 2px rgba(255,255,255,.96),
+    inset -5px -7px 9px rgba(185,113,60,.16),
+    0 6px 0 #d9a46e,
+    0 13px 17px rgba(64,66,51,.22) !important;
+}
+
+.space-dashboard-clay > header > nav > * {
+  border: 1.5px solid rgba(194, 137, 94, .32) !important;
+  background: linear-gradient(145deg, #fffdf5, #ffe4c6) !important;
+  box-shadow: inset 0 2px 1px #fff, inset -4px -5px 7px rgba(190,119,66,.13), 0 3px 0 rgba(204,147,96,.5) !important;
+}
+
+.space-dashboard-clay > header > nav svg {
+  stroke-width: 2.7px;
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,.92)) drop-shadow(0 2px 1px rgba(111,70,43,.26));
+}
+
+.space-dashboard-clay > section:first-of-type > div:last-of-type {
+  border: 2px solid rgba(221, 159, 123, .34);
+  background-image: linear-gradient(135deg, #fff1cf 0%, #ffe6e0 47%, #d8f1ff 100%) !important;
+  box-shadow: inset 0 3px 6px rgba(255,255,255,.82), inset -6px -7px 11px rgba(182,108,74,.11) !important;
+}
+
+.space-dashboard-clay .mood-keycap {
+  border: 2.5px solid rgba(171, 106, 66, .38) !important;
+  outline: 1px solid rgba(255,255,255,.7);
+  outline-offset: -5px;
+  border-radius: 1.45rem !important;
+  background-image: linear-gradient(145deg, #fffefb 0%, #ffe1c2 100%) !important;
+  box-shadow:
+    inset 0 3px 2px rgba(255,255,255,.98),
+    inset -6px -7px 9px rgba(190,108,57,.14),
+    0 7px 0 #e2ad76,
+    0 14px 18px rgba(77,66,49,.2) !important;
+}
+
+.space-dashboard-clay .mood-stamp {
+  border: 2px solid rgba(181, 124, 84, .34);
+  border-radius: 1rem;
+  background: linear-gradient(145deg, #fffefb 0%, #f3dfc3 100%);
+  box-shadow: inset 0 5px 8px rgba(120,75,40,.17), inset 0 -2px 1px rgba(255,255,255,.92), 0 2px 0 rgba(255,255,255,.78);
+}
+
+.space-dashboard-clay .mood-stamp::after { box-shadow: inset 0 4px 8px rgba(126,77,43,.13), inset 0 -1px 1px rgba(255,255,255,.9); }
+
+.space-dashboard-clay .mood-picker-grid + button {
+  border: 2px solid rgba(208, 126, 86, .52) !important;
+  background-image: linear-gradient(145deg, #fff0df 0%, #ff9c6c 100%) !important;
+  box-shadow: inset 0 3px 2px rgba(255,255,255,.78), inset -5px -6px 8px rgba(186,79,40,.17), 0 7px 0 #d96f43, 0 14px 18px rgba(74,58,42,.18) !important;
+}
+
+.space-dashboard-clay > button {
+  border: 3px solid #1d3158 !important;
+  outline: 1px solid rgba(170,201,235,.36);
+  outline-offset: -5px;
+  border-radius: 1.8rem !important;
+  background-image: linear-gradient(145deg, #5f78a7 0%, #2c416c 55%, #203156 100%) !important;
+  box-shadow:
+    inset 0 4px 2px rgba(208,228,255,.29),
+    inset -8px -10px 13px rgba(7,22,50,.24),
+    0 8px 0 #142442,
+    0 17px 23px rgba(26,41,66,.32) !important;
+}
+
+.space-dashboard-clay .space-project-row {
+  border: 2.5px solid rgba(169, 107, 67, .32) !important;
+  outline: 1px solid rgba(255,255,255,.67);
+  outline-offset: -5px;
+  border-radius: 1.45rem !important;
+  background-image:
+    radial-gradient(ellipse at 16% 7%, rgba(255,255,255,.96), transparent 27%),
+    linear-gradient(145deg, #fffef8 0%, #ffefd6 58%, #def2ff 100%),
+    url('/clay/ivory-card-clay.png') !important;
+  box-shadow:
+    inset 0 3px 2px rgba(255,255,255,.94),
+    inset -7px -8px 10px rgba(177,103,60,.11),
+    0 6px 0 #e6bd8e,
+    0 13px 18px rgba(76,65,47,.17) !important;
+}
+
+.space-dashboard-clay .space-project-row .h-3[title][aria-label],
+.space-dashboard-clay .space-project-track {
+  border: 1.5px solid rgba(197, 138, 94, .35);
+  background-image: linear-gradient(145deg, #fffdf5, #f7dfbf) !important;
+  box-shadow: inset 0 3px 5px rgba(129,81,44,.16), inset 0 -1px 1px rgba(255,255,255,.92), 0 2px 0 rgba(255,255,255,.72) !important;
+}
+
+.space-dashboard-clay .space-project-phase {
+  top: 3px;
+  height: calc(100% - 6px);
+  border-radius: .55rem;
+  border: 1px solid rgba(255,255,255,.58);
+  box-shadow: inset 0 2px 2px rgba(255,255,255,.5), inset -3px -3px 5px rgba(137,86,50,.12), 0 3px 0 rgba(128,81,47,.18) !important;
 }
