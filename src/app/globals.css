@@ -5,8 +5,11 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: "Patrick Hand", "Ma Shan Zheng", "HarmonyOS Sans SC", "MiSans", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "ZCOOL KuaiLe", "Ma Shan Zheng", "Patrick Hand", cursive;
+  --font-hand-en: "Patrick Hand", "Caveat";
+  --font-hand-en-title: "Caveat", "Patrick Hand";
+  --font-hand-zh: "ZCOOL KuaiLe", "Ma Shan Zheng";
+  --font-sans: var(--font-hand-en), var(--font-hand-zh), "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-hand-en-title), var(--font-hand-zh), cursive;
   --clay-stroke: rgba(133, 91, 55, 0.18);
   --clay-shadow: 0 7px 0 rgba(184, 127, 77, 0.11), 0 18px 32px rgba(119, 84, 61, 0.13);
   --clay-shadow-small: 0 3px 0 rgba(184, 127, 77, 0.1), 0 9px 18px rgba(119, 84, 61, 0.1);
@@ -64,6 +67,10 @@ select {
   font: inherit;
 }
 
+.font-sans {
+  font-family: var(--font-sans) !important;
+}
+
 .safe-bottom {
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
 }
@@ -77,20 +84,14 @@ select {
   scrollbar-width: none;
 }
 
-@font-face {
-  font-family: "MyTime Cute";
-  src: url("/fonts/ZCOOLQingKeHuangYou-Regular.ttf") format("truetype");
-  font-display: swap;
-}
-
 .font-cute {
-  font-family: "ZCOOL KuaiLe", "MyTime Cute", "Ma Shan Zheng", "YouYuan", "Hannotate SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-hand-zh), var(--font-hand-en), "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
   letter-spacing: 0.04em;
 }
 
 .font-quote {
   /* 仅用于状态句子：保持手写感，禁止浏览器伪造粗体造成笔画叠压。 */
-  font-family: "Caveat", "Ma Shan Zheng", "MyTime Cute", "YouYuan", "Hannotate SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-hand-en-title), var(--font-hand-zh), "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
   font-weight: 400;
   font-synthesis: none;
   letter-spacing: 0.06em;
@@ -1216,4 +1217,661 @@ main .rounded-full {
 @media (prefers-reduced-motion: reduce) {
   .login-clay-screen .login-clay-card .login-clay-tab,
   .login-clay-screen .login-clay-card .login-clay-primary-action { transition: none; }
+}
+
+/* 登录入口第二版：不再拉伸带留白的图片素材，以可控的粘土受光、厚边和压痕塑形。 */
+.login-clay-screen {
+  background: #aee0f3;
+}
+
+.login-clay-screen .login-clay-world {
+  filter: saturate(0.9) brightness(0.9) contrast(1.03);
+}
+
+.login-clay-screen .login-clay-main-panel {
+  border: 2px solid rgba(255, 255, 255, 0.72) !important;
+  background:
+    radial-gradient(ellipse at 16% 8%, rgba(255, 255, 255, 0.36) 0%, rgba(255, 255, 255, 0) 27%),
+    radial-gradient(ellipse at 86% 95%, rgba(169, 113, 63, 0.18) 0%, rgba(169, 113, 63, 0) 40%),
+    linear-gradient(145deg, #ebd5ae 0%, #dfbf91 100%) !important;
+  box-shadow:
+    inset 3px 3px 2px rgba(255, 255, 255, 0.45),
+    inset -7px -9px 18px rgba(120, 76, 39, 0.2),
+    0 9px 0 #c39a67,
+    0 22px 40px rgba(48, 74, 53, 0.34) !important;
+}
+
+.login-clay-screen .login-clay-main-panel::before {
+  position: absolute;
+  z-index: 0;
+  inset: 1.15rem;
+  border: 1px solid rgba(168, 117, 69, 0.13);
+  border-radius: clamp(2rem, 6vw, 3.5rem);
+  content: '';
+  box-shadow: inset 0 2px 8px rgba(154, 104, 57, 0.06), 0 1px 0 rgba(255, 255, 255, 0.52);
+  pointer-events: none;
+}
+
+.login-clay-screen .login-clay-main-panel::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  content: '';
+  opacity: 0.48;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse at 25% 32%, rgba(115, 73, 41, 0.52) 0 0.8px, transparent 1.1px),
+    radial-gradient(ellipse at 72% 63%, rgba(255, 247, 225, 0.8) 0 0.7px, transparent 1px),
+    radial-gradient(ellipse at 44% 86%, rgba(121, 78, 43, 0.32) 0 0.55px, transparent 0.9px);
+  background-size: 11px 13px, 17px 19px, 7px 9px;
+  mix-blend-mode: multiply;
+}
+
+.login-clay-screen .login-clay-main-panel > * { z-index: 1; }
+
+.login-clay-screen .login-clay-switcher {
+  min-height: 0;
+  padding: 0;
+  gap: 0.75rem;
+  background: transparent;
+  box-shadow: none;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab {
+  min-height: 3.45rem;
+  padding: 0.78rem 1.32rem !important;
+  border: 1px solid rgba(155, 102, 60, 0.2) !important;
+  background-image: none !important;
+  box-shadow:
+    inset 2px 2px 1px rgba(255, 255, 255, 0.45),
+    inset -4px -5px 7px rgba(130, 80, 43, 0.2),
+    0 5px 0 rgba(126, 79, 43, 0.22),
+    0 10px 14px rgba(86, 62, 39, 0.16) !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab-create {
+  background:
+    radial-gradient(rgba(143, 71, 30, 0.16) 0.65px, transparent 0.95px) 0 0 / 7px 8px,
+    linear-gradient(145deg, #f7bd79, #df793a) !important;
+  filter: none;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab-manage {
+  background:
+    radial-gradient(rgba(58, 111, 120, 0.13) 0.65px, transparent 0.95px) 0 0 / 7px 8px,
+    linear-gradient(145deg, #c1e0df, #72b4bd) !important;
+  filter: none;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab-return {
+  background:
+    radial-gradient(rgba(115, 76, 42, 0.12) 0.6px, transparent 0.9px) 0 0 / 7px 8px,
+    linear-gradient(145deg, #f7e7c9, #d9b98b) !important;
+}
+
+.login-clay-screen .login-clay-field-label > span {
+  margin-left: 0.45rem;
+  color: #5c4c40 !important;
+  font-size: 0.96rem;
+  letter-spacing: 0.1em;
+}
+
+.login-clay-screen .login-clay-card .login-clay-inset-field {
+  min-height: 4.65rem;
+  border: 1px solid rgba(151, 100, 58, 0.17) !important;
+  background:
+    radial-gradient(rgba(122, 78, 41, 0.13) 0.55px, transparent 0.85px) 0 0 / 8px 9px,
+    linear-gradient(145deg, #d9bd91, #f1dbb9 52%, #d8b98e) !important;
+  box-shadow:
+    inset 4px 5px 10px rgba(130, 81, 42, 0.16),
+    inset -3px -3px 4px rgba(255, 255, 255, 0.48),
+    0 3px 0 rgba(255, 255, 255, 0.5),
+    0 8px 13px rgba(112, 78, 48, 0.12) !important;
+  color: #4c4b4a !important;
+}
+
+.login-clay-screen .login-clay-card select.login-clay-inset-field {
+  background-image:
+    linear-gradient(45deg, transparent 50%, #b76231 50%),
+    linear-gradient(135deg, #b76231 50%, transparent 50%),
+    radial-gradient(rgba(122, 78, 41, 0.13) 0.55px, transparent 0.85px) 0 0 / 8px 9px,
+    linear-gradient(145deg, #d9bd91, #f1dbb9 52%, #d8b98e) !important;
+  background-position: calc(100% - 1.7rem) 52%, calc(100% - 1.25rem) 52%, center !important;
+  background-size: 0.5rem 0.5rem, 0.5rem 0.5rem, 8px 9px, 100% 100% !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-inset-field:focus {
+  border-color: rgba(214, 111, 50, 0.55) !important;
+  box-shadow:
+    inset 4px 5px 10px rgba(130, 81, 42, 0.16),
+    inset -3px -3px 4px rgba(255, 255, 255, 0.76),
+    0 0 0 4px rgba(240, 142, 71, 0.18),
+    0 8px 13px rgba(112, 78, 48, 0.12) !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-primary-action {
+  min-height: 5.05rem;
+  margin-top: 0.8rem;
+  border: 1px solid rgba(151, 72, 22, 0.26) !important;
+  background:
+    radial-gradient(rgba(134, 55, 13, 0.19) 0.7px, transparent 1px) 0 0 / 7px 8px,
+    radial-gradient(rgba(255, 220, 137, 0.22) 0.6px, transparent 0.9px) 4px 3px / 11px 10px,
+    linear-gradient(180deg, #f9aa3c 0%, #e97a1c 48%, #cf5510 100%) !important;
+  box-shadow:
+    inset 3px 3px 2px rgba(255, 241, 196, 0.4),
+    inset -5px -7px 8px rgba(172, 63, 11, 0.24),
+    0 7px 0 #b94d12,
+    0 14px 18px rgba(109, 57, 24, 0.25) !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-primary-action:active:not(:disabled) {
+  box-shadow:
+    inset 3px 4px 8px rgba(151, 58, 13, 0.26),
+    0 2px 0 #b94d12,
+    0 5px 8px rgba(109, 57, 24, 0.18) !important;
+}
+
+.login-clay-screen .login-clay-message,
+.login-clay-screen .login-clay-warning,
+.login-clay-screen .login-clay-space-row {
+  border: 1px solid rgba(151, 100, 58, 0.14) !important;
+  background-image: none !important;
+  background:
+    radial-gradient(rgba(122, 78, 41, 0.13) 0.55px, transparent 0.85px) 0 0 / 8px 9px,
+    #ead0a8 !important;
+  box-shadow:
+    inset 2px 2px 1px rgba(255, 255, 255, 0.65),
+    inset -3px -3px 6px rgba(130, 80, 43, 0.11),
+    0 5px 10px rgba(102, 72, 43, 0.11) !important;
+}
+
+@media (max-width: 640px) {
+  .login-clay-screen .login-clay-main-panel::before { inset: 0.8rem; }
+  .login-clay-screen .login-clay-card .login-clay-tab { padding-inline: 1rem !important; }
+}
+
+/* 以手作粘土板素材承担真实体积：前景文字和控件只落在其中心安全区，不能再用渐变将它抹平。 */
+.login-clay-screen .login-clay-main-panel {
+  border: 0 !important;
+  background-color: #f4e6ca !important;
+  background-image: url('/clay/login-clay-main-panel-v2.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  box-shadow: none !important;
+}
+
+.login-clay-screen .login-clay-main-panel::before,
+.login-clay-screen .login-clay-main-panel::after {
+  display: none;
+}
+
+.login-clay-screen .login-clay-main-panel {
+  min-height: 0;
+  padding: clamp(4.1rem, 9vw, 5.8rem) clamp(2.65rem, 7.8vw, 5.15rem) clamp(3.55rem, 7vw, 4.8rem) !important;
+}
+
+.login-clay-screen .login-clay-logo-wrap {
+  margin-bottom: 1.55rem;
+}
+
+.login-clay-screen .login-clay-form {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.login-clay-screen .login-clay-field-card {
+  position: relative;
+  isolation: isolate;
+  min-height: 9.3rem;
+  padding: 1.55rem 1.75rem 1.55rem;
+  overflow: visible;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.login-clay-screen .login-clay-field-card::before {
+  position: absolute;
+  z-index: 0;
+  inset: -0.35rem -0.55rem -0.85rem;
+  content: '';
+  pointer-events: none;
+  background: url('/clay/login-raised-card-v2.png') center / 100% 100% no-repeat;
+}
+
+.login-clay-screen .login-clay-field-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.login-clay-screen .login-clay-field-title {
+  margin: 0 0 0.8rem 0.1rem;
+  color: #3f4652;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.88), 0 2px 3px rgba(91, 65, 40, 0.14);
+}
+
+.login-clay-screen .login-clay-field-control {
+  height: 3.25rem;
+  padding: 0 0.25rem;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #465364 !important;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.login-clay-screen .login-clay-field-control:focus {
+  box-shadow: 0 0 0 3px rgba(226, 135, 65, 0.2) !important;
+}
+
+.login-clay-screen .login-clay-select {
+  appearance: none;
+  padding-right: 3.4rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #b15d30 50%),
+    linear-gradient(135deg, #b15d30 50%, transparent 50%) !important;
+  background-position: calc(100% - 0.55rem) 52%, calc(100% - 0.12rem) 52% !important;
+  background-size: 0.48rem 0.48rem, 0.48rem 0.48rem !important;
+  background-repeat: no-repeat !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-inset-field,
+.login-clay-screen .login-clay-field-label > span {
+  all: unset;
+}
+
+@media (max-width: 640px) {
+  .login-clay-screen .login-clay-main-panel {
+    padding: 3.7rem 2.05rem 3rem !important;
+  }
+  .login-clay-screen .login-clay-field-card {
+    min-height: 8.9rem;
+    padding: 1.42rem 1.45rem 1.4rem;
+  }
+}
+
+/*
+ * 登录页第三版：四个关键层级全部直接使用生成的凸起粘土贴图。
+ * 必须保持透明底，不能再以渐变、内凹阴影或不透明底色把贴图边缘的厚度和投影压平。
+ */
+.login-clay-screen {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+.login-clay-screen .login-panel-wrap {
+  width: min(100%, 35.5rem) !important;
+  max-width: 35.5rem !important;
+  padding-block: clamp(1.5rem, 4vh, 3.5rem) !important;
+}
+
+.login-clay-screen .login-clay-main-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: visible !important;
+  min-height: 0 !important;
+  padding: clamp(4.05rem, 8vw, 5.25rem) clamp(2.55rem, 7.2vw, 4.7rem) clamp(3.35rem, 6vw, 4.35rem) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent url('/clay/login-main-raised-v2.png') center / 100% 100% no-repeat !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  aspect-ratio: 933 / 1245;
+}
+
+.login-clay-screen .login-clay-main-panel::before,
+.login-clay-screen .login-clay-main-panel::after {
+  display: none !important;
+}
+
+.login-clay-screen .login-clay-main-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.login-clay-screen .login-clay-switcher {
+  width: fit-content;
+  min-height: 0;
+  margin-inline: auto;
+  padding: 0.2rem 0.1rem 0.8rem !important;
+  gap: 0.65rem !important;
+  overflow: visible;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab,
+.login-clay-screen .login-clay-card .login-clay-primary-action {
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  place-items: center;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab {
+  width: 8.65rem;
+  height: 4.2rem;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72), 0 2px 3px rgba(79, 48, 29, 0.2) !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab-create {
+  background-image: url('/clay/login-create-raised-v1.png') !important;
+  color: #8d4625 !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab-manage {
+  background-image: url('/clay/login-manage-raised-v1.png') !important;
+  color: #355c7a !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab-return {
+  width: 9.2rem;
+  height: 3.1rem;
+  background-image: url('/clay/login-raised-card-v2.png') !important;
+  color: #5d5c58 !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-primary-action {
+  width: 100%;
+  min-height: 0 !important;
+  margin-top: 0.55rem;
+  padding: 0 !important;
+  background-image: url('/clay/login-primary-raised-v2.png') !important;
+  color: #fffaf2 !important;
+  font-size: clamp(1.2rem, 3.1vw, 1.5rem) !important;
+  letter-spacing: 0.13em;
+  text-shadow: 0 2px 0 rgba(133, 67, 23, 0.42), 0 4px 8px rgba(112, 52, 18, 0.28) !important;
+  aspect-ratio: 1989 / 615;
+}
+
+.login-clay-screen .login-clay-button-label {
+  position: relative;
+  z-index: 1;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab:hover:not(:disabled),
+.login-clay-screen .login-clay-card .login-clay-primary-action:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.008);
+  filter: none !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab:active:not(:disabled),
+.login-clay-screen .login-clay-card .login-clay-primary-action:active:not(:disabled) {
+  transform: translateY(3px) scale(0.985) !important;
+  box-shadow: none !important;
+  filter: brightness(0.96) !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-primary-action:disabled {
+  opacity: 0.76 !important;
+  filter: none !important;
+}
+
+@media (max-width: 640px) {
+  .login-clay-screen {
+    padding: 0.75rem 0.75rem 1.4rem !important;
+  }
+
+  .login-clay-screen .login-panel-wrap {
+    width: min(100%, 31rem) !important;
+    padding-block: 1.25rem !important;
+  }
+
+  .login-clay-screen .login-clay-main-panel {
+    padding: 3.45rem 1.7rem 2.85rem !important;
+  }
+
+  .login-clay-screen .login-clay-card .login-clay-tab {
+    width: 7.55rem;
+    height: 3.7rem;
+    font-size: 0.8rem !important;
+  }
+
+  .login-clay-screen .login-clay-card .login-clay-tab-return {
+    width: 8.25rem;
+    height: 2.8rem;
+  }
+}
+
+/* 内容会随错误提示和表单自动增高，主卡片不再按贴图比例裁切内容。 */
+.login-clay-screen .login-clay-main-panel {
+  height: auto !important;
+  aspect-ratio: auto !important;
+  min-height: 0 !important;
+}
+
+/* 放大登录页的阅读层级，MyTime 是最醒目的入口标识。 */
+.login-clay-screen .login-clay-logo-wrap {
+  margin-bottom: 1.1rem !important;
+}
+
+.login-clay-screen .login-clay-logo span:first-child {
+  font-size: clamp(3.65rem, 8vw, 4.7rem) !important;
+  line-height: 0.9 !important;
+}
+
+.login-clay-screen .login-clay-card .login-clay-tab {
+  font-size: 1.08rem !important;
+}
+
+.login-clay-screen .login-clay-field-card {
+  min-height: 8.55rem;
+  padding: 1.45rem 1.7rem 1.25rem;
+  overflow: hidden;
+  background: transparent url('/clay/space-focus-inset-card-v1.png') center / 100% 100% no-repeat !important;
+}
+
+.login-clay-screen .login-clay-field-card::before {
+  display: none;
+}
+
+.login-clay-screen .login-clay-field-title {
+  margin: 0 0 0.65rem 0.18rem;
+  color: #3d4651;
+  font-size: 1.18rem;
+  letter-spacing: 0.1em;
+}
+
+.login-clay-screen .login-clay-field-control {
+  height: 3.55rem;
+  padding: 0 0.48rem;
+  color: #3f4e61 !important;
+  font-size: 1.28rem;
+  font-weight: 900;
+}
+
+.login-clay-screen .login-clay-card .login-clay-primary-action {
+  font-size: clamp(1.55rem, 3.7vw, 1.9rem) !important;
+}
+
+.login-clay-screen .login-clay-message,
+.login-clay-screen .login-clay-warning,
+.login-clay-screen .login-clay-space-row {
+  font-size: 1.04rem !important;
+}
+
+.login-clay-screen .login-clay-help {
+  font-size: 0.92rem !important;
+}
+
+@media (max-width: 640px) {
+  .login-clay-screen .login-clay-logo span:first-child {
+    font-size: 3.3rem !important;
+  }
+
+  .login-clay-screen .login-clay-field-card {
+    min-height: 7.75rem;
+    padding: 1.3rem 1.35rem 1.15rem;
+  }
+
+  .login-clay-screen .login-clay-field-title {
+    font-size: 1.05rem;
+  }
+
+  .login-clay-screen .login-clay-field-control {
+    height: 3.1rem;
+    font-size: 1.16rem;
+  }
+}
+
+/* 外层是凸起卡片，真正录入内容的区域才是压入卡片内部的凹槽。 */
+.login-clay-screen .login-clay-field-card {
+  isolation: isolate;
+  min-height: 9.45rem;
+  overflow: visible;
+  padding: 1.45rem 1.7rem 1.3rem;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.login-clay-screen .login-clay-field-card::before {
+  display: block;
+  z-index: 0;
+  inset: -0.35rem -0.55rem -0.85rem;
+  background: url('/clay/login-raised-card-v2.png') center / 100% 100% no-repeat;
+}
+
+.login-clay-screen .login-clay-field-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.login-clay-screen .login-clay-field-title {
+  margin: 0 0 0.7rem 0.18rem;
+}
+
+.login-clay-screen .login-clay-control-well {
+  position: relative;
+  display: block;
+  height: 3.95rem;
+  padding: 0.26rem 1.05rem 0.42rem;
+  overflow: hidden;
+  border: 1px solid rgba(132, 87, 48, 0.25);
+  border-radius: 1.35rem;
+  background-color: #e9d0a6 !important;
+  background-image:
+    linear-gradient(145deg, rgba(115, 76, 43, 0.16), rgba(255, 248, 229, 0.08)),
+    url('/clay/ivory-card-clay.png') !important;
+  background-position: center, center !important;
+  background-size: 100% 100%, 250px 250px !important;
+  background-repeat: no-repeat, repeat !important;
+  background-blend-mode: multiply, normal;
+  box-shadow:
+    inset 6px 7px 12px rgba(103, 66, 37, 0.3),
+    inset -4px -4px 6px rgba(255, 255, 255, 0.64),
+    inset 0 0 0 1px rgba(122, 77, 41, 0.08) !important;
+}
+
+.login-clay-screen .login-clay-field-control {
+  height: 100%;
+  padding: 0 0.52rem;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.login-clay-screen .login-clay-select {
+  padding-right: 3.5rem;
+  background-position: calc(100% - 0.75rem) 52%, calc(100% - 0.28rem) 52% !important;
+}
+
+.login-clay-screen .login-clay-control-well:focus-within {
+  outline: 3px solid rgba(226, 135, 65, 0.22);
+  outline-offset: -3px;
+}
+
+@media (max-width: 640px) {
+  .login-clay-screen .login-clay-field-card {
+    min-height: 8.45rem;
+    padding: 1.25rem 1.35rem 1.1rem;
+  }
+
+  .login-clay-screen .login-clay-control-well {
+    height: 3.4rem;
+    padding-inline: 0.85rem;
+  }
+}
+
+/* 贴图的阴影重心在下方，文字单独上移以回到粘土表面的视觉中心。 */
+.login-clay-screen .login-clay-primary-action .login-clay-button-label {
+  transform: translateY(-0.3rem);
+}
+
+.login-clay-screen .login-clay-help {
+  position: relative;
+  top: -0.55rem;
+  margin-bottom: -0.55rem;
+}
+
+@media (max-width: 640px) {
+  .login-clay-screen .login-clay-primary-action .login-clay-button-label {
+    transform: translateY(-0.22rem);
+  }
+
+  .login-clay-screen .login-clay-help {
+    top: -0.38rem;
+    margin-bottom: -0.38rem;
+  }
+}
+
+/* 帮助手册紧贴主按钮下方，留在主卡片的安全区里。 */
+.login-clay-screen .login-clay-form > .login-clay-help {
+  top: -1.45rem;
+  margin-top: -0.45rem !important;
+  margin-bottom: -1.45rem;
+  padding-top: 0 !important;
+}
+
+@media (max-width: 640px) {
+  .login-clay-screen .login-clay-form > .login-clay-help {
+    top: -1.05rem;
+    margin-top: -0.3rem !important;
+    margin-bottom: -1.05rem;
+  }
+}
+
+/* 田园贴图保持静止，只让前景粘土云横向缓慢漂移。 */
+.login-clay-screen .login-clay-world > .login-clay-cloud {
+  display: block;
+  opacity: 0.78;
+  animation-name: login-cloud-slow-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+.login-clay-screen .login-cloud-one { animation-duration: 76s; }
+.login-clay-screen .login-cloud-two { animation-duration: 92s; }
+.login-clay-screen .login-cloud-three { animation-duration: 108s; }
+
+@keyframes login-cloud-slow-drift {
+  from { translate: -4vw 0; }
+  to { translate: 7vw 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-clay-screen .login-clay-world > .login-clay-cloud {
+    animation: none !important;
+  }
 }
