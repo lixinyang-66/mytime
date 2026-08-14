@@ -508,7 +508,7 @@ function SpaceView({ space, projects, projectPhases, moods, progressAssessments,
         <button onClick={onLogout} className="shrink-0 rounded-full bg-white px-4 py-2.5 text-xs font-black text-slate-500 shadow-sm">退出空间</button>
       </header>
 
-      <section className="mt-6 rounded-[2rem] bg-white p-4 shadow-sm">
+      <section className="space-mood-panel mt-6 rounded-[2rem] bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="w-full text-lg font-black text-slate-500">今天状态怎么样呀~</h2>
           <div className="flex items-center gap-2">
@@ -884,7 +884,7 @@ function SpaceGanttOverview({ projects, phases, progressAssessments, deletingPro
   }
 
   return (
-    <section className="mt-6 rounded-[2rem] bg-white/90 p-5 shadow-soft">
+    <section className="space-projects-panel mt-6 rounded-[2rem] bg-white/90 p-5 shadow-soft">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-black">我的项目</h2>
         <span className="rounded-full bg-cream px-3 py-1.5 text-xs font-black text-slate-500">{timelineProjects.length} 项目</span>
@@ -912,7 +912,7 @@ function SpaceGanttOverview({ projects, phases, progressAssessments, deletingPro
               </div>
               <div className={`relative ${projectIndex === 0 ? 'pt-5' : ''}`}>
                 {projectIndex === 0 ? <span className={`absolute top-0 z-20 ${todayLabelTranslate} rounded-full bg-[linear-gradient(135deg,#F3A05C,#E87966)] px-2 py-1 text-[10px] font-black leading-none text-white shadow-sm`} style={{ left: `${todayPosition}%` }}>今天</span> : null}
-                <div className={`relative h-9 overflow-hidden rounded-xl ${palette.track}`}>
+                <div className={`space-project-track relative h-9 overflow-hidden rounded-xl ${palette.track}`}>
                   <span className="absolute inset-y-0 z-10 w-0.5 bg-[#E77A48]/60" style={{ left: `${todayPosition}%` }} aria-hidden="true" />
                   {projectPhaseList.length ? projectPhaseList.map((phase, phaseIndex) => {
                     const phaseWidth = width(phase.start_date, phase.end_date);
@@ -922,11 +922,11 @@ function SpaceGanttOverview({ projects, phases, progressAssessments, deletingPro
                         ? 'bg-[linear-gradient(135deg,#FFD89A_0%,#FFB983_100%)] text-[#704327]'
                         : phaseColors[(projectIndex + phaseIndex) % phaseColors.length];
                     return (
-                      <span key={phase.id} title={phase.name} className={`absolute top-1 flex h-7 items-center overflow-hidden rounded-md px-1.5 text-[10px] font-black leading-none whitespace-nowrap ${tone} ${phase.status === 'pending' ? 'opacity-75' : ''}`} style={{ left: `${position(phase.start_date)}%`, width: `${phaseWidth}%` }}>
+                      <span key={phase.id} title={phase.name} className={`space-project-phase absolute top-1 flex h-7 items-center overflow-hidden rounded-md px-1.5 text-[10px] font-black leading-none whitespace-nowrap ${tone} ${phase.status === 'pending' ? 'opacity-75' : ''}`} style={{ left: `${position(phase.start_date)}%`, width: `${phaseWidth}%` }}>
                         {phaseWidth >= 7 ? phase.name : null}
                       </span>
                     );
-                  }) : <span className={`absolute top-1 flex h-7 items-center overflow-hidden rounded-md px-2 text-[10px] font-black text-slate-700 ${phaseColors[projectIndex % phaseColors.length]}`} style={{ left: `${position(project.start_date)}%`, width: `${width(project.start_date, project.end_date)}%` }}>{project.name}</span>}
+                  }) : <span className={`space-project-phase absolute top-1 flex h-7 items-center overflow-hidden rounded-md px-2 text-[10px] font-black text-slate-700 ${phaseColors[projectIndex % phaseColors.length]}`} style={{ left: `${position(project.start_date)}%`, width: `${width(project.start_date, project.end_date)}%` }}>{project.name}</span>}
                 </div>
               </div>
             </SwipeGanttProjectRow>
@@ -1020,7 +1020,7 @@ function SwipeGanttProjectRow({ children, panelClassName, deleting, onOpen, onDe
           onOpen();
         }}
         style={{ transform: `translateX(${offset}px)`, touchAction: 'pan-y' }}
-        className={`relative z-10 block w-full rounded-2xl p-2.5 text-left transition-transform duration-200 ${panelClassName}`}
+        className={`space-project-row relative z-10 block w-full rounded-2xl p-2.5 text-left transition-transform duration-200 ${panelClassName}`}
       >
         {children}
       </button>

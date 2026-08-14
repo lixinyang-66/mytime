@@ -2150,25 +2150,29 @@ main .rounded-full {
 /* 空间页凸起黏土：以厚实体边和接触阴影塑形，避免描边卡片感。 */
 .space-dashboard-clay > section {
   overflow: visible;
-  border: 0 !important;
-  border-radius: 2.35rem !important;
+  border: 3px solid rgba(159, 103, 63, .34) !important;
+  outline: 1px solid rgba(255, 253, 245, .72);
+  outline-offset: -5px;
+  border-radius: 2.55rem 2.32rem 2.48rem 2.4rem !important;
   background-color: #fff7e8 !important;
   background-image:
     radial-gradient(ellipse at 20% 7%, rgba(255,255,255,.98) 0%, rgba(255,255,255,.52) 18%, transparent 43%),
-    linear-gradient(145deg, rgba(255,255,255,.64), rgba(255,224,184,.42)),
+    linear-gradient(145deg, rgba(255,255,255,.38), rgba(255,224,184,.24)),
     url('/clay/ivory-card-clay.png') !important;
   background-size: auto, auto, 520px 520px !important;
   background-blend-mode: screen, normal, multiply;
   box-shadow:
     inset 0 4px 2px rgba(255,255,255,.96),
-    inset -9px -11px 17px rgba(183,119,66,.13),
-    0 11px 0 #e7bc89,
-    0 20px 25px rgba(62,70,57,.23) !important;
+    inset -10px -12px 17px rgba(139,82,43,.18),
+    0 8px 0 rgba(174,111,62,.38),
+    0 16px 24px rgba(76,57,39,.22) !important;
 }
 
 .space-dashboard-clay > header > nav,
 .space-dashboard-clay > header > button {
-  border: 0 !important;
+  border: 2px solid rgba(185, 125, 85, .42) !important;
+  outline: 1px solid rgba(255,255,255,.62);
+  outline-offset: -4px;
   background-image: linear-gradient(145deg, #fffef8 0%, #f7d4aa 100%) !important;
   box-shadow:
     inset 0 3px 2px rgba(255,255,255,.96),
@@ -2178,7 +2182,7 @@ main .rounded-full {
 }
 
 .space-dashboard-clay > header > nav > * {
-  border: 0 !important;
+  border: 1.5px solid rgba(194, 137, 94, .32) !important;
   background: linear-gradient(145deg, #fffdf5, #ffe4c6) !important;
   box-shadow: inset 0 2px 1px #fff, inset -4px -5px 7px rgba(190,119,66,.13), 0 3px 0 rgba(204,147,96,.5) !important;
 }
@@ -2189,13 +2193,15 @@ main .rounded-full {
 }
 
 .space-dashboard-clay > section:first-of-type > div:last-of-type {
-  border: 0;
+  border: 2px solid rgba(221, 159, 123, .34);
   background-image: linear-gradient(135deg, #fff1cf 0%, #ffe6e0 47%, #d8f1ff 100%) !important;
   box-shadow: inset 0 3px 6px rgba(255,255,255,.82), inset -6px -7px 11px rgba(182,108,74,.11) !important;
 }
 
 .space-dashboard-clay .mood-keycap {
-  border: 0 !important;
+  border: 2.5px solid rgba(171, 106, 66, .38) !important;
+  outline: 1px solid rgba(255,255,255,.7);
+  outline-offset: -5px;
   border-radius: 1.45rem !important;
   background-image: linear-gradient(145deg, #fffefb 0%, #ffe1c2 100%) !important;
   box-shadow:
@@ -2206,7 +2212,7 @@ main .rounded-full {
 }
 
 .space-dashboard-clay .mood-stamp {
-  border: 0;
+  border: 2px solid rgba(181, 124, 84, .34);
   border-radius: 1rem;
   background: linear-gradient(145deg, #fffefb 0%, #f3dfc3 100%);
   box-shadow: inset 0 5px 8px rgba(120,75,40,.17), inset 0 -2px 1px rgba(255,255,255,.92), 0 2px 0 rgba(255,255,255,.78);
@@ -2215,24 +2221,28 @@ main .rounded-full {
 .space-dashboard-clay .mood-stamp::after { box-shadow: inset 0 4px 8px rgba(126,77,43,.13), inset 0 -1px 1px rgba(255,255,255,.9); }
 
 .space-dashboard-clay .mood-picker-grid + button {
-  border: 0 !important;
+  border: 2px solid rgba(208, 126, 86, .52) !important;
   background-image: linear-gradient(145deg, #fff0df 0%, #ff9c6c 100%) !important;
   box-shadow: inset 0 3px 2px rgba(255,255,255,.78), inset -5px -6px 8px rgba(186,79,40,.17), 0 7px 0 #d96f43, 0 14px 18px rgba(74,58,42,.18) !important;
 }
 
 .space-dashboard-clay > button {
-  border: 0 !important;
+  border: 3px solid #1d3158 !important;
+  outline: 1px solid rgba(170,201,235,.36);
+  outline-offset: -5px;
   border-radius: 1.8rem !important;
   background-image: linear-gradient(145deg, #5f78a7 0%, #2c416c 55%, #203156 100%) !important;
   box-shadow:
     inset 0 4px 2px rgba(208,228,255,.29),
     inset -8px -10px 13px rgba(7,22,50,.24),
-    0 9px 0 #162846,
-    0 19px 24px rgba(26,41,66,.32) !important;
+    0 8px 0 #142442,
+    0 17px 23px rgba(26,41,66,.32) !important;
 }
 
-.space-dashboard-clay > section:last-of-type > div:last-child > div > button[class*="text-left"] {
-  border: 0 !important;
+.space-dashboard-clay .space-project-row {
+  border: 2.5px solid rgba(169, 107, 67, .32) !important;
+  outline: 1px solid rgba(255,255,255,.67);
+  outline-offset: -5px;
   border-radius: 1.45rem !important;
   background-image:
     radial-gradient(ellipse at 16% 7%, rgba(255,255,255,.96), transparent 27%),
@@ -2245,16 +2255,17 @@ main .rounded-full {
     0 13px 18px rgba(76,65,47,.17) !important;
 }
 
-.space-dashboard-clay .h-3[title][aria-label],
-.space-dashboard-clay .h-9.overflow-hidden {
-  border: 0;
+.space-dashboard-clay .space-project-row .h-3[title][aria-label],
+.space-dashboard-clay .space-project-track {
+  border: 1.5px solid rgba(197, 138, 94, .35);
   background-image: linear-gradient(145deg, #fffdf5, #f7dfbf) !important;
   box-shadow: inset 0 3px 5px rgba(129,81,44,.16), inset 0 -1px 1px rgba(255,255,255,.92), 0 2px 0 rgba(255,255,255,.72) !important;
 }
 
-.space-dashboard-clay .h-9.overflow-hidden > span:not([class*="bg-[#E77A48]"]) {
+.space-dashboard-clay .space-project-phase {
   top: 3px;
   height: calc(100% - 6px);
   border-radius: .55rem;
+  border: 1px solid rgba(255,255,255,.58);
   box-shadow: inset 0 2px 2px rgba(255,255,255,.5), inset -3px -3px 5px rgba(137,86,50,.12), 0 3px 0 rgba(128,81,47,.18) !important;
 }
