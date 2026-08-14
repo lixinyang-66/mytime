@@ -1875,3 +1875,110 @@ main .rounded-full {
     animation: none !important;
   }
 }
+
+/* 最终微调：彩色粘土入口要让文字从材质中清晰浮出来。 */
+.login-clay-screen .login-clay-card .login-clay-tab-create,
+.login-clay-screen .login-clay-card .login-clay-tab-manage {
+  color: #fffdf7 !important;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.28),
+    0 2px 0 rgba(57, 43, 32, 0.34),
+    0 4px 7px rgba(57, 43, 32, 0.3) !important;
+}
+
+/* 主操作缩回一点，给下方的帮助手册留出与按钮匹配的阅读空间。 */
+.login-clay-screen .login-clay-card .login-clay-primary-action {
+  width: 90% !important;
+  margin: 0.25rem auto 0 !important;
+  aspect-ratio: 1989 / 615 !important;
+}
+
+.login-clay-screen .login-clay-primary-action .login-clay-button-label {
+  transform: translateY(-0.22rem);
+}
+
+.login-clay-screen .login-clay-form > .login-clay-help {
+  top: -0.82rem;
+  margin-top: -0.18rem !important;
+  margin-bottom: -0.82rem;
+  font-size: clamp(1rem, 2.15vw, 1.13rem) !important;
+  line-height: 1.3;
+  letter-spacing: 0.12em;
+}
+
+/* 只保留真实粘土云：关闭此前由圆形元素拼出的半透明云。 */
+.login-clay-screen .login-clay-world > .login-clay-cloud {
+  display: none !important;
+}
+
+/* 由田园背景同一套粘土材质生成的云朵，在背景层缓慢横向漂移。 */
+.login-clay-screen .login-clay-world::before,
+.login-clay-screen .login-clay-world::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  display: block;
+  pointer-events: none;
+  background: url('/clay/login-background-cloud-v1.png') center / contain no-repeat;
+  will-change: transform;
+}
+
+.login-clay-screen .login-clay-world::before {
+  top: 1.4%;
+  left: -4.5%;
+  width: clamp(17rem, 28vw, 28rem);
+  aspect-ratio: 3 / 2;
+  animation: login-source-cloud-drift-left 82s ease-in-out infinite alternate;
+}
+
+.login-clay-screen .login-clay-world::after {
+  top: 15%;
+  right: -6.5%;
+  width: clamp(12rem, 20vw, 20rem);
+  aspect-ratio: 3 / 2;
+  opacity: 0.96;
+  animation: login-source-cloud-drift-right 104s ease-in-out infinite alternate;
+}
+
+@keyframes login-source-cloud-drift-left {
+  from { transform: translateX(-1.2rem); }
+  to { transform: translateX(3.2rem); }
+}
+
+@keyframes login-source-cloud-drift-right {
+  from { transform: translateX(1.8rem) scale(0.78); }
+  to { transform: translateX(-2.5rem) scale(0.78); }
+}
+
+@media (max-width: 640px) {
+  .login-clay-screen .login-clay-card .login-clay-primary-action {
+    width: 92% !important;
+    margin-top: 0.18rem !important;
+  }
+
+  .login-clay-screen .login-clay-form > .login-clay-help {
+    top: -0.65rem;
+    margin-top: -0.12rem !important;
+    margin-bottom: -0.65rem;
+    font-size: 1rem !important;
+  }
+
+  .login-clay-screen .login-clay-world::before {
+    top: 2.2%;
+    left: -13%;
+    width: 24rem;
+  }
+
+  .login-clay-screen .login-clay-world::after {
+    top: 18%;
+    right: -23%;
+    width: 16rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-clay-screen .login-clay-world::before,
+  .login-clay-screen .login-clay-world::after {
+    animation: none !important;
+  }
+}
