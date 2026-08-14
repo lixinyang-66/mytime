@@ -545,7 +545,9 @@ function SpaceView({ space, projects, projectPhases, moods, progressAssessments,
                     className={`mood-keycap overflow-hidden rounded-2xl p-0.5 transition disabled:opacity-50 ${selected ? 'bg-honey ring-2 ring-orange-300' : 'bg-cream/70 ring-1 ring-orange-100 hover:-translate-y-0.5'}`}
                     aria-label={mood.label}
                   >
-                    <img src={mood.src} alt="" className="aspect-square w-full scale-125 rounded-xl object-cover" />
+                    <span className="mood-stamp aspect-square w-full">
+                      <img src={mood.src} alt="" className="aspect-square w-full rounded-xl object-cover" />
+                    </span>
                   </button>
                 );
               })}
