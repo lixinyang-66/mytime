@@ -2642,3 +2642,299 @@ main .rounded-full {
     transition: none;
   }
 }
+
+/* Space focus refinement: keep the raised form, but trade polish for a dry,
+   hand-worked clay surface.  This scope intentionally does not affect the
+   dashboard or login clay treatments. */
+.space-focus-page-clay {
+  --clay-out: 0 7px 0 #b97d4e, 0 15px 23px rgba(67, 55, 40, .24);
+  --clay-in: inset 2px 2px 3px rgba(98, 62, 36, .12), inset -7px -9px 12px rgba(92, 55, 32, .17);
+  --clay-out-sm: 0 5px 0 #bd8555, 0 10px 16px rgba(67, 55, 40, .2);
+  --clay-in-sm: inset 1px 1px 2px rgba(98, 62, 36, .11), inset -5px -6px 9px rgba(92, 55, 32, .15);
+  --clay-out-key: 0 4px 0 #b97c4e, 0 8px 13px rgba(67, 55, 40, .2);
+  --clay-in-key: inset 1px 1px 2px rgba(98, 62, 36, .12), inset -4px -5px 7px rgba(92, 55, 32, .16);
+  --clay-out-orange: 0 8px 0 #a94417, 0 16px 23px rgba(83, 45, 24, .29);
+  --clay-in-orange: inset 2px 2px 3px rgba(122, 53, 20, .16), inset -7px -8px 11px rgba(115, 43, 15, .2);
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay {
+  border: 3px solid rgba(137, 83, 45, .48) !important;
+  background-color: #f4d7aa !important;
+  background-image: var(--focus-clay-grain) !important;
+  background-size: 360px 360px !important;
+  background-position: center !important;
+  background-repeat: repeat !important;
+  background-blend-mode: multiply !important;
+  box-shadow:
+    inset 4px 4px 7px rgba(128, 88, 55, .07),
+    inset -12px -13px 18px rgba(99, 63, 38, .16),
+    0 9px 0 rgba(169, 108, 61, .47),
+    0 22px 30px rgba(62, 71, 57, .24) !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay::before {
+  content: none !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-main-panel,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-review-panel.space-focus-review-panel,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-records-panel,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-quote-panel {
+  outline: none !important;
+  background-image: var(--focus-clay-grain) !important;
+  background-size: 330px 330px !important;
+  background-position: center !important;
+  background-repeat: repeat !important;
+  background-blend-mode: multiply !important;
+  box-shadow: var(--clay-in), var(--clay-out) !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-main-panel {
+  border-color: rgba(170, 113, 65, .61) !important;
+  background-color: #f1d8a4 !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-quote-panel {
+  border-color: rgba(169, 91, 52, .63) !important;
+  background-color: #edc18e !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-review-panel.space-focus-review-panel {
+  border-color: rgba(90, 124, 82, .62) !important;
+  background-color: #c8ddc0 !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-records-panel {
+  border-color: rgba(85, 117, 143, .62) !important;
+  background-color: #c6dce7 !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-time-card,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-project-card,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-summary-bar {
+  outline: none !important;
+  border-color: rgba(137, 90, 53, .46) !important;
+  background-image: var(--focus-clay-grain) !important;
+  background-size: 155px 155px !important;
+  background-position: center !important;
+  background-repeat: repeat !important;
+  background-blend-mode: multiply !important;
+  box-shadow: var(--clay-in-sm), var(--clay-out-sm) !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-time-card:first-child {
+  background-color: #ead68e !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-time-card:last-child {
+  border-color: rgba(82, 124, 105, .48) !important;
+  background-color: #c4ddc8 !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-project-card:nth-child(3n + 1) {
+  background-color: #f0c997 !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-project-card:nth-child(3n + 2) {
+  border-color: rgba(81, 125, 101, .47) !important;
+  background-color: #c3dfc6 !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-project-card:nth-child(3n + 3) {
+  border-color: rgba(81, 111, 145, .47) !important;
+  background-color: #c3d9e8 !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-summary-bar {
+  border-color: rgba(103, 90, 138, .45) !important;
+  background-color: #d9d0e7 !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-nav {
+  border-color: rgba(130, 104, 59, .5) !important;
+  background-color: #ddc998 !important;
+  background-image: var(--focus-clay-grain) !important;
+  background-size: 120px 120px !important;
+  background-repeat: repeat !important;
+  background-blend-mode: multiply !important;
+  box-shadow: var(--clay-in-sm), var(--clay-out-sm) !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-nav-key,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-small-action,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-exit-button {
+  outline: none !important;
+  border-color: rgba(135, 89, 52, .5) !important;
+  background-image: var(--focus-clay-grain) !important;
+  background-size: 105px 105px !important;
+  background-position: center !important;
+  background-repeat: repeat !important;
+  background-blend-mode: multiply !important;
+  box-shadow: var(--clay-in-key), var(--clay-out-key) !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-nav-key { background-color: #e4d6ad !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-nav-key.is-active { background-color: #e9a969 !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-small-action { border-color: rgba(81, 125, 101, .48) !important; background-color: #bcd9c2 !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-exit-button { border-color: rgba(85, 116, 143, .48) !important; background-color: #c6dbe7 !important; }
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-primary-action {
+  outline: none !important;
+  border-color: #b64b18 !important;
+  background-color: #e8792d !important;
+  background-image: var(--focus-clay-grain) !important;
+  background-size: 170px 170px !important;
+  background-position: center !important;
+  background-repeat: repeat !important;
+  background-blend-mode: multiply !important;
+  box-shadow: var(--clay-in-orange), var(--clay-out-orange) !important;
+}
+
+/* Replace the old white sheen with a second, low-contrast grain pass. */
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-main-panel::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-quote-panel::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-review-panel::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-records-panel::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-time-card::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-project-card::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-summary-bar::before {
+  inset: 3px !important;
+  content: '' !important;
+  background: var(--focus-clay-grain) center / 120px 120px repeat !important;
+  opacity: .24 !important;
+  mix-blend-mode: multiply;
+  filter: contrast(1.18) saturate(.72);
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-main-panel::after,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-quote-panel::after,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-review-panel::after,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > section.space-focus-records-panel::after,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-time-card::after,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-project-card::after,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-summary-bar::after,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-nav-key::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-small-action::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-exit-button::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-primary-action::before {
+  content: none !important;
+}
+
+/* Readability pass: increase text only where this page uses compact utility
+   sizes, preserving the page's layout and data hierarchy. */
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > header [title] > p {
+  font-size: 1rem !important;
+  letter-spacing: .02em;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay > header h1 {
+  font-size: clamp(2.15rem, 3.2vw, 3.25rem) !important;
+  line-height: 1.05;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-exit-button,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-small-action {
+  font-size: .95rem !important;
+  line-height: 1.2;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-main-panel h2,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-review-panel h2,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-records-panel h2 {
+  font-size: clamp(1.5rem, 2.05vw, 2rem) !important;
+  line-height: 1.22;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-main-panel h3 {
+  font-size: clamp(1.25rem, 1.7vw, 1.55rem) !important;
+  line-height: 1.25;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-time-card > span {
+  font-size: .9rem !important;
+  line-height: 1.35;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-time-card strong,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-time-card input {
+  font-size: 1.6rem !important;
+  line-height: 1.15;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-project-card > .min-w-0 > p:first-child {
+  font-size: 1.1rem !important;
+  line-height: 1.28;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-project-card > .min-w-0 > p:nth-child(2) {
+  font-size: .875rem !important;
+  line-height: 1.35;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-project-card > strong,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-summary-bar {
+  font-size: 1rem !important;
+  line-height: 1.4;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-quote-panel > p {
+  font-size: clamp(1.55rem, 2.25vw, 2.2rem) !important;
+  line-height: 1.52;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-primary-action {
+  font-size: clamp(1.65rem, 2.65vw, 2.45rem) !important;
+  line-height: 1.1;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-review-panel > p,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-records-panel > div > p,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-records-panel article > p.mt-2 {
+  font-size: 1rem !important;
+  line-height: 1.55;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-records-panel article > p.mt-1,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-records-panel > div > span {
+  font-size: .875rem !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay h1,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay h2,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay h3,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-primary-action {
+  text-shadow: 0 1px 1px rgba(55, 43, 31, .2) !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .text-orange-700,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .text-orange-800 {
+  text-shadow: none !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-nav-key:hover:not(:disabled),
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-small-action:hover:not(:disabled),
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-exit-button:hover:not(:disabled),
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-time-card:hover,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-project-card:hover {
+  filter: none !important;
+  box-shadow: var(--clay-in), 0 9px 0 rgba(157, 103, 62, .74), 0 18px 25px rgba(67, 55, 40, .24) !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-primary-action:hover:not(:disabled) {
+  filter: none !important;
+  box-shadow: var(--clay-in-orange), 0 10px 0 #9c3e13, 0 19px 26px rgba(83, 45, 24, .3) !important;
+}
+
+@media (max-width: 640px) {
+  .app-clay-content .space-focus-page-clay.space-focus-page-clay > header h1 {
+    font-size: 1.8rem !important;
+  }
+
+  .app-clay-content .space-focus-page-clay.space-focus-page-clay > header [title] > p {
+    font-size: .875rem !important;
+  }
+
+  .app-clay-content .space-focus-page-clay.space-focus-page-clay .space-focus-exit-button {
+    font-size: .8rem !important;
+  }
+}
