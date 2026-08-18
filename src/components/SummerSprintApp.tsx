@@ -300,7 +300,7 @@ export default function MyTimeApp() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="clay-app-shell safe-bottom mx-auto min-h-screen w-full max-w-3xl px-4 py-5 text-ink sm:px-6">
+    <main className="clay-app-shell safe-bottom mx-auto min-h-screen w-full max-w-xl px-4 py-5 text-ink sm:px-5">
       <AppClayCountrysideBackdrop />
       <div className="app-clay-content app-soft-clay relative z-10">{children}</div>
     </main>
@@ -489,12 +489,12 @@ function SpaceView({ space, projects, projectPhases, moods, progressAssessments,
   }
 
   return (
-    <div className="space-dashboard-clay rounded-[2.5rem] bg-[#fff7ea] p-5 sm:p-8">
+    <div className="space-dashboard-clay rounded-[2.5rem] bg-[#fff7ea] p-5 sm:p-6">
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <div title={space.name}>
             <p className="text-sm font-black text-orange-700">MyTime</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">我的空间</h1>
+            <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-2xl">我的空间</h1>
           </div>
           <nav className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white p-1.5 shadow-sm" aria-label="空间导航">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff1d9] text-orange-700" aria-label="我的空间">
@@ -1035,7 +1035,6 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
   onGantt: () => void; onReview: () => void; onBack: () => void;
   recordFilter: number | 'all'; onRecordFilter: (v: number | 'all') => void;
 }) {
-  const [trend, setTrend] = useState<'minutes' | 'days' | null>(null);
   const currentPhase = data.phases.find((phase) => phase.status === 'in_progress')
     || data.phases.find((phase) => phase.start_date <= toDateKey(now) && phase.end_date >= toDateKey(now))
     || data.phases.find((phase) => phase.status === 'pending')
@@ -1066,16 +1065,6 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
         </div>
         <ProjectPlanTimeline phases={data.phases} projectStart={data.project.start_date} projectEnd={data.project.end_date} />
       </section>
-
-      <section className="grid grid-cols-2 gap-3">
-        <button onClick={() => setTrend(trend === 'minutes' ? null : 'minutes')} className={`stat-card-time rounded-[1.6rem] p-5 text-left transition ${trend === 'minutes' ? 'ring-2 ring-[#e6b887]' : ''}`}>
-          <p className="text-sm font-bold text-slate-500">累计专注时间</p><p className="mt-2 text-2xl font-black">{minutesToText(data.stats.totalMinutes)}</p>
-        </button>
-        <button onClick={() => setTrend(trend === 'days' ? null : 'days')} className={`stat-card-days rounded-[1.6rem] p-5 text-left transition ${trend === 'days' ? 'ring-2 ring-[#c5b2e8]' : ''}`}>
-          <p className="text-sm font-bold text-slate-500">累计专注天数</p><p className="mt-2 text-2xl font-black">{data.stats.totalDays} 天</p>
-        </button>
-      </section>
-      {trend ? <WeeklyTrendChart trend={trend} points={data.stats.weeklyTrend} /> : null}
 
       <section className="rounded-[2rem] bg-white/80 p-5 shadow-soft">
         <div className="flex items-center justify-between gap-3">
@@ -1167,43 +1156,6 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
         <RecordList records={filteredRecords} />
       </section>
     </div>
-  );
-}
-
-function WeeklyTrendChart({ trend, points }: { trend: 'minutes' | 'days'; points: Array<{ weekStart: string; label: string; minutes: number; days: number }> }) {
-  if (!points.length) {
-    return (
-      <section className="rounded-[1.8rem] bg-white/80 p-5 text-center shadow-soft ring-1 ring-[#eee3d3]">
-        <p className="text-sm font-black text-slate-700">项目尚未开始</p>
-        <p className="mt-2 text-xs font-bold text-slate-500">项目开始后，这里会从第 1 周起逐周累计展示。</p>
-      </section>
-    );
-  }
-
-  const values = points.map((point) => trend === 'minutes' ? point.minutes : point.days);
-  const max = Math.max(1, ...values);
-  const chartWidth = Math.max(640, points.length * 86);
-  const chartPoints = points.map((point, index) => {
-    const x = 32 + (index * (chartWidth - 64)) / Math.max(1, points.length - 1);
-    const value = trend === 'minutes' ? point.minutes : point.days;
-    const y = 132 - (value / max) * 96;
-    return { ...point, x, y, value };
-  });
-  const path = chartPoints.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
-
-  return (
-    <section className="rounded-[1.8rem] bg-white/80 p-5 shadow-soft ring-1 ring-[#eee3d3]">
-      <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black text-slate-500">项目全周期趋势 · 已记录 {points.length} 周</p><h3 className="mt-1 text-base font-black">{trend === 'minutes' ? '每周专注时间' : '每周专注天数'}</h3></div><span className="text-xs font-bold text-slate-400">点击卡片收起</span></div>
-      <div className="mt-4 overflow-x-auto pb-2">
-        <svg viewBox={`0 0 ${chartWidth} 180`} className="h-44 max-w-none" style={{ width: `${chartWidth}px` }} role="img" aria-label={trend === 'minutes' ? '项目全周期每周专注时间折线图' : '项目全周期每周专注天数折线图'}>
-          <line x1="32" y1="132" x2={chartWidth - 32} y2="132" stroke="#eadfce" strokeWidth="2" />
-          <line x1="32" y1="84" x2={chartWidth - 32} y2="84" stroke="#f1e9de" strokeWidth="2" strokeDasharray="5 7" />
-          <line x1="32" y1="36" x2={chartWidth - 32} y2="36" stroke="#f1e9de" strokeWidth="2" strokeDasharray="5 7" />
-          <path d={path} fill="none" stroke={trend === 'minutes' ? '#d99054' : '#8870b8'} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-          {chartPoints.map((point) => <g key={point.weekStart}><circle cx={point.x} cy={point.y} r="6" fill={trend === 'minutes' ? '#d99054' : '#8870b8'} /><text x={point.x} y="158" textAnchor="middle" fontSize="12" fill="#8290a3" fontWeight="700">{point.label}</text></g>)}
-        </svg>
-      </div>
-    </section>
   );
 }
 
