@@ -1494,12 +1494,12 @@ function FocusView({ elapsedSeconds, paused, onPause, onFinish }: {
   const dateLabel = `${today.getMonth() + 1}月${today.getDate()}日 · 星期${['日', '一', '二', '三', '四', '五', '六'][today.getDay()]}`;
   return (
     <div className="focus-clay-countryside fixed inset-0 z-50 grid min-h-[100dvh] w-screen place-items-center overflow-hidden px-5 py-20">
-      <section className="focus-clay-card clay-raised-surface relative z-10 w-full max-w-[34rem] rounded-[2.75rem] border-[3px] border-white bg-white/95 px-6 py-16 text-center shadow-[0_28px_70px_rgba(43,55,85,0.15)] backdrop-blur-sm sm:px-12 sm:py-20">
-        <p className="text-sm font-bold tracking-[0.12em] text-slate-500">{dateLabel}</p>
-        <h1 className="mt-4 text-6xl font-black tracking-tight sm:text-8xl">{formatSeconds(elapsedSeconds)}</h1>
-        <div className="mt-14 grid grid-cols-2 gap-3">
-          <button onClick={onPause} className="rounded-[1.5rem] bg-[#fff7ed] px-6 py-5 text-lg font-black shadow-sm">{paused ? '继续' : '暂停'}</button>
-          <button onClick={onFinish} className="rounded-[1.5rem] bg-ink px-6 py-5 text-lg font-black text-white shadow-soft">结束并记录</button>
+      <section className="focus-clay-card clay-raised-surface focus-timer-panel relative z-10 w-full max-w-[34rem] rounded-[2.75rem] border-[3px] border-white px-6 py-16 text-center backdrop-blur-sm sm:px-12 sm:py-20">
+        <p className="focus-date-label text-base font-black tracking-[0.14em] text-[#7a6a5a] sm:text-lg">{dateLabel}</p>
+        <h1 className="focus-timer-digits mt-5 text-7xl font-black tracking-tight sm:text-8xl">{formatSeconds(elapsedSeconds)}</h1>
+        <div className="mt-14 grid grid-cols-2 gap-4">
+          <button onClick={onPause} className="focus-btn-pause rounded-[1.6rem] px-6 py-6 text-xl font-black transition active:scale-[0.98]">{paused ? '继续' : '暂停'}</button>
+          <button onClick={onFinish} className="focus-btn-finish rounded-[1.6rem] px-6 py-6 text-xl font-black text-white transition active:scale-[0.98]">结束并记录</button>
         </div>
       </section>
     </div>
