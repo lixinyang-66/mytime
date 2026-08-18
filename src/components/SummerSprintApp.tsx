@@ -22,7 +22,8 @@ type ProjectMode = 'home' | 'gantt' | 'focus' | 'finish' | 'plan' | 'stats' | 'b
 
 type RunningSession = { projectId: number; taskBoardId: number | null; phaseId: number | null; startAt: string; pausedMs: number };
 
-type SpaceData = { space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[]; progressAssessments: ProjectProgressAssessment[] };
+type SpaceFocusSummary = { weekStart: string; weekEnd: string; dailyStartTime: string | null; dailyEndTime: string | null; availableMinutes: number; allocatedMinutes: number };
+type SpaceData = { space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[]; progressAssessments: ProjectProgressAssessment[]; focusSummary?: SpaceFocusSummary };
 
 type ProjectData = {
   project: Project;
@@ -250,6 +251,7 @@ export default function MyTimeApp() {
           projectPhases={spaceData.projectPhases}
           moods={spaceData.moods}
           progressAssessments={spaceData.progressAssessments}
+          focusSummary={spaceData.focusSummary}
           onOpenProject={async (id) => { await loadProject(id); }}
           onFocus={() => setSpaceMode('focus')}
           onRefresh={loadSpace}
@@ -333,8 +335,8 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void 
 }
 
 // === SPACE VIEW ===
-function SpaceView({ space, projects, projectPhases, moods, progressAssessments, onOpenProject, onFocus, onRefresh, onLogout }: {
-  space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[]; progressAssessments: ProjectProgressAssessment[]; onOpenProject: (id: number) => Promise<void>; onFocus: () => void; onRefresh: () => void; onLogout: () => void;
+function SpaceView({ space, projects, projectPhases, moods, progressAssessments, focusSummary, onOpenProject, onFocus, onRefresh, onLogout }: {
+  space: Space; projects: ProjectSummary[]; projectPhases: ProjectPhase[]; moods: SpaceMood[]; progressAssessments: ProjectProgressAssessment[]; focusSummary?: SpaceFocusSummary; onOpenProject: (id: number) => Promise<void>; onFocus: () => void; onRefresh: () => void; onLogout: () => void;
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
@@ -567,6 +569,29 @@ function SpaceView({ space, projects, projectPhases, moods, progressAssessments,
         </div>
         {moodError ? <p className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-coral">{moodError}</p> : null}
       </section>
+
+      {focusSummary ? (
+        <button type="button" onClick={onFocus} className="space-focus-home-card mt-5 flex w-full items-center justify-between gap-3 rounded-[1.7rem] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 ring-1 ring-orange-100">
+          <div className="min-w-0">
+            <p className="text-sm font-black text-orange-700">本周专注时间</p>
+            <p className="mt-1 text-base font-black text-slate-800">
+              {(() => {
+                if (!focusSummary.dailyStartTime || !focusSummary.dailyEndTime) return '本周尚未安排';
+                const replaced = focusSummary.weekStart.replaceAll('-', '.');
+                const replacedEnd = focusSummary.weekEnd.replaceAll('-', '.');
+                return `${replaced} — ${replacedEnd} · ${focusSummary.dailyStartTime} → ${focusSummary.dailyEndTime}`;
+              })()}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-black">
+              <span className="text-slate-700">每天已安排 {minutesToText(focusSummary.allocatedMinutes)}</span>
+              <span className={focusSummary.allocatedMinutes > focusSummary.availableMinutes ? 'text-coral' : 'text-slate-400'}>
+                还可安排 {minutesToText(Math.max(0, focusSummary.availableMinutes - focusSummary.allocatedMinutes))}
+              </span>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full bg-[#fff0d7] px-3 py-1.5 text-xs font-black text-orange-800">{focusSummary.dailyStartTime ? '查看' : '去安排'}</span>
+        </button>
+      ) : null}
 
       {celebration ? (
         <section className="mt-5 flex items-center gap-3 rounded-[1.7rem] bg-gradient-to-r from-amber-100 via-orange-50 to-rose-50 p-4 ring-1 ring-amber-200">
