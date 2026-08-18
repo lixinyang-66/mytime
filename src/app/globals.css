@@ -686,6 +686,77 @@ main .rounded-full {
   text-shadow: 0 1px 0 rgba(255,255,255,.92), 0 3px 3px rgba(89,65,47,.18);
 }
 
+/* 专注计时卡片：更温润的奶油桃色、更强的立体感与更大的字号。 */
+.focus-timer-panel {
+  background:
+    linear-gradient(160deg, rgba(255,255,255,.92) 0%, rgba(255,244,230,.78) 40%, rgba(255,234,210,.72) 100%),
+    url('/clay/ivory-card-clay.png') center / 720px 720px repeat !important;
+  background-blend-mode: screen, multiply !important;
+  border-color: rgba(255,255,255,.55) !important;
+  box-shadow:
+    inset 2px 3px 0 rgba(255,255,255,.9),
+    inset -2px -3px 5px rgba(142, 105, 68, .1),
+    0 10px 0 rgba(120, 85, 52, .14),
+    0 28px 50px rgba(52, 75, 48, .22),
+    0 60px 90px rgba(43, 55, 85, .1) !important;
+}
+
+.focus-date-label {
+  color: #8c7b6a;
+  text-shadow: 0 1px 0 rgba(255,255,255,.85);
+}
+
+.focus-timer-digits {
+  font-variant-numeric: tabular-nums;
+  color: #3a4a63;
+  text-shadow:
+    0 1px 0 rgba(255,255,255,.95),
+    0 4px 6px rgba(89,65,47,.22),
+    0 12px 24px rgba(89,65,47,.12);
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 640px) {
+  .focus-timer-digits {
+    font-size: clamp(5rem, 12vw, 7.5rem);
+    line-height: 1.05;
+  }
+}
+
+.focus-btn-pause {
+  color: #5d4a38;
+  background: linear-gradient(145deg, #fffaf2 0%, #ffecd4 100%) !important;
+  box-shadow:
+    inset 2px 2px 0 rgba(255,255,255,.8),
+    inset -3px -4px 6px rgba(160, 120, 80, .12),
+    0 5px 0 rgba(160, 120, 80, .2),
+    0 14px 22px rgba(91, 73, 50, .14) !important;
+}
+
+.focus-btn-pause:active:not(:disabled) {
+  box-shadow:
+    inset 2px 3px 6px rgba(140, 100, 65, .14),
+    0 2px 0 rgba(160, 120, 80, .18),
+    0 6px 12px rgba(91, 73, 50, .1) !important;
+}
+
+.focus-btn-finish {
+  background: linear-gradient(145deg, #3d5170 0%, #2f405a 100%) !important;
+  box-shadow:
+    inset 2px 2px 0 rgba(255,255,255,.18),
+    inset -3px -4px 6px rgba(20, 28, 42, .25),
+    0 5px 0 rgba(30, 42, 60, .35),
+    0 14px 22px rgba(43, 55, 85, .28) !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,.25);
+}
+
+.focus-btn-finish:active:not(:disabled) {
+  box-shadow:
+    inset 2px 3px 6px rgba(20, 28, 42, .35),
+    0 2px 0 rgba(30, 42, 60, .3),
+    0 6px 12px rgba(43, 55, 85, .2) !important;
+}
+
 .app-clay-content button,
 .login-clay-card button,
 .focus-clay-card button {
