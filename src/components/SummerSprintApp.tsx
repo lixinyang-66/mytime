@@ -1068,10 +1068,10 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
       </section>
 
       <section className="grid grid-cols-2 gap-3">
-        <button onClick={() => setTrend(trend === 'minutes' ? null : 'minutes')} className={`rounded-[1.6rem] p-5 text-left transition ${trend === 'minutes' ? 'bg-[#f5e8d8] ring-2 ring-[#e6b887]' : 'bg-[#fff1df]'}`}>
+        <button onClick={() => setTrend(trend === 'minutes' ? null : 'minutes')} className={`stat-card-time rounded-[1.6rem] p-5 text-left transition ${trend === 'minutes' ? 'ring-2 ring-[#e6b887]' : ''}`}>
           <p className="text-sm font-bold text-slate-500">累计专注时间</p><p className="mt-2 text-2xl font-black">{minutesToText(data.stats.totalMinutes)}</p>
         </button>
-        <button onClick={() => setTrend(trend === 'days' ? null : 'days')} className={`rounded-[1.6rem] p-5 text-left transition ${trend === 'days' ? 'bg-[#eee8f8] ring-2 ring-[#c5b2e8]' : 'bg-[#f3edfb]'}`}>
+        <button onClick={() => setTrend(trend === 'days' ? null : 'days')} className={`stat-card-days rounded-[1.6rem] p-5 text-left transition ${trend === 'days' ? 'ring-2 ring-[#c5b2e8]' : ''}`}>
           <p className="text-sm font-bold text-slate-500">累计专注天数</p><p className="mt-2 text-2xl font-black">{data.stats.totalDays} 天</p>
         </button>
       </section>
@@ -1080,12 +1080,12 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
       <section className="rounded-[2rem] bg-white/80 p-5 shadow-soft">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-black">最近专注</h2>
-          <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-black text-sky-800">{recentRecords.length} 条记录</span>
+          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">{recentRecords.length} 条记录</span>
         </div>
         <div className="mt-4"><RecordList records={filteredRecords} /></div>
       </section>
 
-      <section className="rounded-[2rem] bg-white/80 p-5 shadow-soft">
+      <section className="review-card rounded-[2rem] bg-white/80 p-5 shadow-soft">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-bold text-violet-600">AI 复盘</p>
@@ -1213,9 +1213,9 @@ function ProjectPlanTimeline({ phases, projectStart, projectEnd }: { phases: Pro
   const totalDays = Math.max(1, Math.round((endMs - startMs) / 86400000) + 1);
   const statusLabels: Record<ProjectPhase['status'], string> = { pending: '未开始', in_progress: '进行中', completed: '已完成' };
   const statusStyles: Record<ProjectPhase['status'], string> = {
-    pending: 'bg-slate-100 text-slate-500',
-    in_progress: 'bg-sky-100 text-sky-700',
-    completed: 'bg-emerald-100 text-emerald-700',
+    pending: 'status-badge-pending',
+    in_progress: 'status-badge-inprogress',
+    completed: 'status-badge-completed',
   };
 
   if (!phases.length) {
@@ -1233,8 +1233,10 @@ function ProjectPlanTimeline({ phases, projectStart, projectEnd }: { phases: Pro
         const width = Math.max(4, Math.min(100 - left, (phaseDays / totalDays) * 100));
         const status = phase.status || 'pending';
 
+        const progressClass = status === 'completed' ? 'phase-progress-completed' : status === 'in_progress' ? 'phase-progress-inprogress' : 'phase-progress-pending';
+
         return (
-          <div key={`${phase.id}-${phase.sort_order}-${index}`} className="rounded-[1.4rem] bg-cream/70 p-4">
+          <div key={`${phase.id}-${phase.sort_order}-${index}`} className="phase-card rounded-[1.4rem] bg-cream/70 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="font-black text-slate-800">{phase.name}</p>
@@ -1243,7 +1245,7 @@ function ProjectPlanTimeline({ phases, projectStart, projectEnd }: { phases: Pro
               <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ${statusStyles[status]}`}>{statusLabels[status]}</span>
             </div>
             <div className="relative mt-4 h-3 overflow-hidden rounded-full bg-white/80" aria-label={`${phase.name} 时间范围`}>
-              <div className={`absolute top-0 h-full rounded-full ${status === 'completed' ? 'bg-emerald-300' : status === 'in_progress' ? 'bg-sky-300' : 'bg-slate-200'}`} style={{ left: `${left}%`, width: `${width}%` }} />
+              <div className={`absolute top-0 h-full rounded-full ${progressClass}`} style={{ left: `${left}%`, width: `${width}%` }} />
             </div>
           </div>
         );
@@ -1816,7 +1818,7 @@ function StatsView({ data, onBack }: { data: ProjectData; onBack: () => void }) 
 function RecordList({ records }: { records: StudySession[] }) {
   if (records.length === 0) return <p className="text-sm text-slate-500">还没有记录。开始第一段 MyTime。</p>;
   const outcomeLabels = { progressed: '已推进', completed: '已完成', blocked: '被卡住' };
-  return <div className="space-y-3">{records.map((item) => <div key={item.id} className="rounded-2xl bg-cream/70 p-4"><div className="flex items-center justify-between gap-3"><p className="min-w-0 text-sm font-black">{item.study_date} · {item.task_board?.name || '本次专注'} · {minutesToText(item.duration_minutes)}</p><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${item.outcome_status === 'completed' ? 'bg-emerald-100 text-emerald-800' : item.outcome_status === 'blocked' ? 'bg-rose-100 text-rose-800' : 'bg-sky-100 text-sky-800'}`}>{outcomeLabels[item.outcome_status || 'progressed']}</span></div><p className="mt-1 text-sm text-slate-600">{item.content}</p></div>)}</div>;
+  return <div className="space-y-3">{records.map((item) => <div key={item.id} className="focus-record rounded-2xl bg-cream/70 p-4"><div className="flex items-center justify-between gap-3"><p className="min-w-0 text-sm font-black">{item.study_date} · {item.task_board?.name || '本次专注'} · {minutesToText(item.duration_minutes)}</p><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${item.outcome_status === 'completed' ? 'bg-emerald-100 text-emerald-800' : item.outcome_status === 'blocked' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>{outcomeLabels[item.outcome_status || 'progressed']}</span></div><p className="mt-1 text-sm text-slate-600">{item.content}</p></div>)}</div>;
 }
 
 function Field({ label, value, onChange, type = 'text', multiline = false, placeholder = '', rows = 3 }: { label: string; value: string; onChange: (v: string) => void; type?: string; multiline?: boolean; placeholder?: string; rows?: number }) {
