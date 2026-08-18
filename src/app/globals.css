@@ -30,10 +30,10 @@ body {
   min-height: 100%;
   margin: 0;
   background:
-    radial-gradient(circle at 8% 0%, rgba(255, 211, 142, 0.58), transparent 30rem),
-    radial-gradient(circle at 94% 8%, rgba(169, 219, 255, 0.42), transparent 29rem),
-    radial-gradient(circle at 55% 100%, rgba(255, 205, 183, 0.3), transparent 32rem),
-    linear-gradient(180deg, #fff8ec 0%, #fffdf8 48%, #f7fbff 100%);
+    radial-gradient(circle at 8% 0%, rgba(255, 198, 110, 0.62), transparent 32rem),
+    radial-gradient(circle at 94% 8%, rgba(255, 180, 150, 0.48), transparent 30rem),
+    radial-gradient(circle at 55% 100%, rgba(255, 185, 155, 0.38), transparent 34rem),
+    linear-gradient(180deg, #fff5e6 0%, #fffaf3 46%, #fff8ec 100%);
   color: #2f405a;
   font-family: var(--font-sans);
   letter-spacing: 0.025em;
@@ -486,6 +486,102 @@ main .rounded-full {
 .app-clay-content .bg-yellow-100,
 .app-clay-content .bg-orange-100 {
   box-shadow: inset 2px 2px 4px rgba(255,255,255,.62), inset -5px -6px 9px rgba(146, 115, 77, .1), 0 3px 0 rgba(159, 111, 67, .1) !important;
+}
+
+/* 项目首页：更丰富的暖色调卡片与状态表达 */
+.app-clay-content.app-soft-clay .project-home-clay > section,
+.app-clay-content.app-soft-clay .project-home-clay > .grid > button,
+.app-clay-content.app-soft-clay .project-home-clay > .grid > div {
+  background-color: #fffaf2 !important;
+}
+
+/* 项目计划图主卡片：暖桃色渐变 */
+.app-clay-content.app-soft-clay .project-home-clay > section.project-hero-clay {
+  background: linear-gradient(145deg, #fff8f0 0%, #ffeed9 100%) !important;
+}
+
+/* 统计卡片：温暖且可区分的色调 */
+.app-clay-content.app-soft-clay .project-home-clay .stat-card-time {
+  background: linear-gradient(145deg, #fff4e6 0%, #ffe4c7 100%) !important;
+}
+.app-clay-content.app-soft-clay .project-home-clay .stat-card-days {
+  background: linear-gradient(145deg, #faf1ff 0%, #f3e3fc 100%) !important;
+}
+
+/* 时间轴阶段卡片：交替暖色调 */
+.app-clay-content.app-soft-clay .project-home-clay .phase-card:nth-child(4n+1) {
+  background: linear-gradient(145deg, #fff6ee 0%, #ffe8d6 100%) !important;
+}
+.app-clay-content.app-soft-clay .project-home-clay .phase-card:nth-child(4n+2) {
+  background: linear-gradient(145deg, #fbf8ef 0%, #f5eac7 100%) !important;
+}
+.app-clay-content.app-soft-clay .project-home-clay .phase-card:nth-child(4n+3) {
+  background: linear-gradient(145deg, #f6fbf4 0%, #e3eeda 100%) !important;
+}
+.app-clay-content.app-soft-clay .project-home-clay .phase-card:nth-child(4n+4) {
+  background: linear-gradient(145deg, #fff5f4 0%, #ffe0de 100%) !important;
+}
+
+/* 阶段进度条：温暖的渐变 */
+.app-clay-content.app-soft-clay .project-home-clay .phase-progress-completed {
+  background: linear-gradient(90deg, #aed581, #81c784) !important;
+}
+.app-clay-content.app-soft-clay .project-home-clay .phase-progress-inprogress {
+  background: linear-gradient(90deg, #ffcc80, #ffb74d) !important;
+}
+.app-clay-content.app-soft-clay .project-home-clay .phase-progress-pending {
+  background: linear-gradient(90deg, #e0e0e0, #bdbdbd) !important;
+}
+
+/* 阶段状态标签：暖色调 */
+.app-clay-content.app-soft-clay .project-home-clay .status-badge-pending {
+  background: #f5f0e8 !important;
+  color: #8d7b68 !important;
+}
+.app-clay-content.app-soft-clay .project-home-clay .status-badge-inprogress {
+  background: #fff0d6 !important;
+  color: #c77900 !important;
+}
+.app-clay-content.app-soft-clay .project-home-clay .status-badge-completed {
+  background: #e8f5e9 !important;
+  color: #2e7d32 !important;
+}
+
+/* 最近专注记录：暖色交替 */
+.app-clay-content.app-soft-clay .project-home-clay .focus-record:nth-child(odd) {
+  background: linear-gradient(145deg, #fff7f0 0%, #ffecd9 100%) !important;
+}
+.app-clay-content.app-soft-clay .project-home-clay .focus-record:nth-child(even) {
+  background: linear-gradient(145deg, #fbf5ff 0%, #f3e8fc 100%) !important;
+}
+
+/* AI 复盘：暖紫色调 */
+.app-clay-content.app-soft-clay .project-home-clay .review-card {
+  background: linear-gradient(145deg, #faf5ff 0%, #f3e8fc 100%) !important;
+}
+
+/* 共享组件兜底样式（用于甘特图等非 project-home 场景） */
+.phase-progress-completed {
+  background: linear-gradient(90deg, #aed581, #81c784) !important;
+}
+.phase-progress-inprogress {
+  background: linear-gradient(90deg, #ffcc80, #ffb74d) !important;
+}
+.phase-progress-pending {
+  background: linear-gradient(90deg, #e0e0e0, #bdbdbd) !important;
+}
+
+.status-badge-pending {
+  background: #f5f0e8 !important;
+  color: #8d7b68 !important;
+}
+.status-badge-inprogress {
+  background: #fff0d6 !important;
+  color: #c77900 !important;
+}
+.status-badge-completed {
+  background: #e8f5e9 !important;
+  color: #2e7d32 !important;
 }
 
 .app-clay-content .rounded-2xl,
