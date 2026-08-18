@@ -1,14 +1,8 @@
 import { requireSpaceAuthResponse } from '@/lib/auth';
-import { getWeekEnd, getWeekStart, toDateKey } from '@/lib/date';
+import { getWeekStart, toDateKey } from '@/lib/date';
 import { deriveProjectStatus } from '@/lib/project-status';
 import { isMissingProjectProgressTable } from '@/lib/project-progress';
 import { getSupabaseAdmin } from '@/lib/supabase';
-
-function getMinutesBetween(startTime: string, endTime: string): number {
-  const [startHours, startMinutes] = startTime.split(':').map(Number);
-  const [endHours, endMinutes] = endTime.split(':').map(Number);
-  return Math.max(0, (endHours * 60 + endMinutes) - (startHours * 60 + startMinutes));
-}
 
 function isMissingMoodTable(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
@@ -49,21 +43,18 @@ export async function GET() {
     if (projectPhasesError) throw projectPhasesError;
 
     const weekStart = toDateKey(getWeekStart(new Date()));
-    const weekEnd = toDateKey(getWeekEnd(new Date()));
     const { data: currentFocusPlan, error: focusPlanError } = await supabase
       .from('space_focus_plans')
-      .select('id,daily_start_time,daily_end_time')
+      .select('id')
       .eq('space_id', auth.spaceId)
       .eq('week_start_date', weekStart)
       .maybeSingle();
     if (focusPlanError && focusPlanError.code !== '42P01' && focusPlanError.code !== 'PGRST205') throw focusPlanError;
     const { data: currentFocusItems, error: focusItemsError } = currentFocusPlan
-      ? await supabase.from('space_focus_items').select('project_id,daily_minutes').eq('space_focus_plan_id', currentFocusPlan.id)
+      ? await supabase.from('space_focus_items').select('project_id').eq('space_focus_plan_id', currentFocusPlan.id)
       : { data: [], error: null };
     if (focusItemsError) throw focusItemsError;
     const focusedProjectIds = new Set((currentFocusItems || []).map((item) => item.project_id));
-    const focusAvailableMinutes = currentFocusPlan ? getMinutesBetween(currentFocusPlan.daily_start_time, currentFocusPlan.daily_end_time) : 0;
-    const focusAllocatedMinutes = (currentFocusItems || []).reduce((sum, item) => sum + Number(item.daily_minutes || 0), 0);
 
     const { data: progressAssessments, error: progressError } = projectIds.length
       ? await supabase.from('project_progress_assessments').select('*').in('project_id', projectIds)
@@ -94,14 +85,6 @@ export async function GET() {
       projectPhases: projectPhases || [],
       moods: moods || [],
       progressAssessments: progressAssessments || [],
-      focusSummary: {
-        weekStart,
-        weekEnd,
-        dailyStartTime: currentFocusPlan?.daily_start_time || null,
-        dailyEndTime: currentFocusPlan?.daily_end_time || null,
-        availableMinutes: focusAvailableMinutes,
-        allocatedMinutes: focusAllocatedMinutes,
-      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : '读取空间数据失败。';
