@@ -495,6 +495,14 @@ main .rounded-full {
   background-color: #fffaf2 !important;
 }
 
+/* 统计卡片：温暖且可区分的色调 */
+.app-clay-content.app-soft-clay .project-home-clay .stat-card-time {
+  background: linear-gradient(145deg, #fff4e6 0%, #ffe4c7 100%) !important;
+}
+.app-clay-content.app-soft-clay .project-home-clay .stat-card-days {
+  background: linear-gradient(145deg, #faf1ff 0%, #f3e3fc 100%) !important;
+}
+
 /* 项目计划图主卡片：暖桃色渐变 */
 .app-clay-content.app-soft-clay .project-home-clay > section.project-hero-clay {
   background: linear-gradient(145deg, #fff8f0 0%, #ffeed9 100%) !important;
@@ -636,7 +644,7 @@ main .rounded-full {
 .app-clay-countryside { display: none; }
 
 .app-clay-content {
-  max-width: min(34rem, calc(100vw - 2rem));
+  max-width: min(42rem, calc(100vw - 2rem));
 }
 
 .login-panel-wrap { max-width: 34rem; }
@@ -732,7 +740,7 @@ main .rounded-full {
 }
 
 @media (min-width: 1024px) {
-  .app-clay-content { max-width: min(36rem, calc(100vw - 5rem)); }
+  .app-clay-content { max-width: min(44rem, calc(100vw - 5rem)); }
 }
 
 /* 大屏下统一收紧字号与行高，让标题-正文比例更协调、阅读更省力。 */
