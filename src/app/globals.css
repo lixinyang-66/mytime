@@ -1610,6 +1610,124 @@ main .rounded-full {
   filter: saturate(.68) contrast(1.08);
 }
 
+/* The production CSS pipeline hoists earlier focus rules after later custom
+   blocks.  Repeat the page class here to make the approved warm palette win
+   by specificity rather than fragile source order. */
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay {
+  --clay-out: 0 7px 0 #e1aa77, 0 15px 23px rgba(132, 84, 48, .2);
+  --clay-in: inset 2px 2px 3px rgba(191, 129, 76, .12), inset -7px -9px 12px rgba(163, 99, 52, .15);
+  --clay-out-sm: 0 5px 0 #e6b57f, 0 10px 16px rgba(132, 84, 48, .17);
+  --clay-in-sm: inset 1px 1px 2px rgba(191, 129, 76, .11), inset -5px -6px 9px rgba(163, 99, 52, .13);
+  --clay-out-key: 0 4px 0 #e1aa77, 0 8px 13px rgba(132, 84, 48, .17);
+  --clay-in-key: inset 1px 1px 2px rgba(191, 129, 76, .12), inset -4px -5px 7px rgba(163, 99, 52, .14);
+  --clay-out-orange: 0 8px 0 #c9591d, 0 16px 23px rgba(144, 62, 24, .24);
+  --clay-in-orange: inset 2px 2px 3px rgba(203, 99, 39, .15), inset -7px -8px 11px rgba(173, 67, 22, .17);
+  border-color: #df9c66 !important;
+  background-color: #fff0d8 !important;
+  background-image: none !important;
+  background-blend-mode: normal !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay::before {
+  z-index: 0;
+  inset: 0;
+  content: '' !important;
+  background: var(--focus-clay-grain) center / 260px 260px repeat !important;
+  opacity: .13;
+  mix-blend-mode: multiply;
+  filter: saturate(.72) contrast(1.08);
+  pointer-events: none;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > header,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section {
+  position: relative;
+  z-index: 1;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section.space-focus-main-panel,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section.space-focus-review-panel.space-focus-review-panel,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section.space-focus-records-panel,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section.space-focus-quote-panel {
+  border-color: #e1a06c !important;
+  background-image: none !important;
+  background-blend-mode: normal !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section.space-focus-main-panel { background-color: #fff6df !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section.space-focus-quote-panel { background-color: #ffe3c4 !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section.space-focus-review-panel.space-focus-review-panel { background-color: #fff0d1 !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section.space-focus-records-panel { background-color: #fde4d4 !important; }
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-time-card,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-project-card,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-summary-bar {
+  border-color: #e5ad7b !important;
+  background-image: none !important;
+  background-blend-mode: normal !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-time-card:first-child { background-color: #fff0bf !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-time-card:last-child { background-color: #ffe4ca !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-project-card:nth-child(3n + 1) { background-color: #ffe2be !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-project-card:nth-child(3n + 2) { background-color: #ffedcf !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-project-card:nth-child(3n + 3) { background-color: #ffe0d4 !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-summary-bar { background-color: #ffe4d9 !important; }
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-nav {
+  border-color: #e1a06c !important;
+  background-color: #ffe8c9 !important;
+  background-image: none !important;
+  background-blend-mode: normal !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-nav-key,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-small-action,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-exit-button {
+  border-color: #e1a06c !important;
+  background-image: none !important;
+  background-blend-mode: normal !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-nav-key { background-color: #ffedcf !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-nav-key.is-active { background-color: #ffc486 !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-small-action { background-color: #ffd6ac !important; }
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-exit-button { background-color: #ffe4c9 !important; }
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-primary-action {
+  border-color: #cf6123 !important;
+  background-color: #ff9b4d !important;
+  background-image: none !important;
+  background-blend-mode: normal !important;
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section.space-focus-main-panel::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section.space-focus-quote-panel::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section.space-focus-review-panel::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section.space-focus-records-panel::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-time-card::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-project-card::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-summary-bar::before {
+  background: var(--focus-clay-grain) center / 165px 165px repeat !important;
+  opacity: .18 !important;
+  filter: saturate(.68) contrast(1.08);
+}
+
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-nav-key::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-small-action::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-exit-button::before,
+.app-clay-content .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-primary-action::before {
+  z-index: 0;
+  inset: 3px;
+  width: auto;
+  height: auto;
+  content: '' !important;
+  background: var(--focus-clay-grain) center / 90px 90px repeat !important;
+  opacity: .16;
+  mix-blend-mode: multiply;
+  filter: saturate(.68) contrast(1.08);
+}
+
 /*
  * 登录页第三版：四个关键层级全部直接使用生成的凸起粘土贴图。
  * 必须保持透明底，不能再以渐变、内凹阴影或不透明底色把贴图边缘的厚度和投影压平。
