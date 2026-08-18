@@ -300,7 +300,7 @@ export default function MyTimeApp() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="clay-app-shell safe-bottom mx-auto min-h-screen w-full max-w-xl px-4 py-5 text-ink sm:px-5">
+    <main className="clay-app-shell safe-bottom mx-auto min-h-screen w-full max-w-2xl px-4 py-5 text-ink sm:px-6">
       <AppClayCountrysideBackdrop />
       <div className="app-clay-content app-soft-clay relative z-10">{children}</div>
     </main>
@@ -1035,6 +1035,7 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
   onGantt: () => void; onReview: () => void; onBack: () => void;
   recordFilter: number | 'all'; onRecordFilter: (v: number | 'all') => void;
 }) {
+  const [trend, setTrend] = useState<'minutes' | 'days' | null>(null);
   const currentPhase = data.phases.find((phase) => phase.status === 'in_progress')
     || data.phases.find((phase) => phase.start_date <= toDateKey(now) && phase.end_date >= toDateKey(now))
     || data.phases.find((phase) => phase.status === 'pending')
@@ -1066,6 +1067,16 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
         <ProjectPlanTimeline phases={data.phases} projectStart={data.project.start_date} projectEnd={data.project.end_date} />
       </section>
 
+      <section className="grid grid-cols-2 gap-3">
+        <button onClick={() => setTrend(trend === 'minutes' ? null : 'minutes')} className={`stat-card-time rounded-[1.6rem] p-5 text-left transition ${trend === 'minutes' ? 'ring-2 ring-[#e6b887]' : ''}`}>
+          <p className="text-sm font-bold text-slate-500">累计专注时间</p><p className="mt-2 text-2xl font-black">{minutesToText(data.stats.totalMinutes)}</p>
+        </button>
+        <button onClick={() => setTrend(trend === 'days' ? null : 'days')} className={`stat-card-days rounded-[1.6rem] p-5 text-left transition ${trend === 'days' ? 'ring-2 ring-[#c5b2e8]' : ''}`}>
+          <p className="text-sm font-bold text-slate-500">累计专注天数</p><p className="mt-2 text-2xl font-black">{data.stats.totalDays} 天</p>
+        </button>
+      </section>
+      {trend ? <WeeklyTrendChart trend={trend} points={data.stats.weeklyTrend} /> : null}
+
       <section className="rounded-[2rem] bg-white/80 p-5 shadow-soft">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-black">最近专注</h2>
@@ -1085,77 +1096,42 @@ function ProjectHomeView({ now, data, onStart, onPlan, onStats, onBoards, onGant
       </section>
     </div>
   );
+}
+
+function WeeklyTrendChart({ trend, points }: { trend: 'minutes' | 'days'; points: Array<{ weekStart: string; label: string; minutes: number; days: number }> }) {
+  if (!points.length) {
+    return (
+      <section className="rounded-[1.8rem] bg-white/80 p-5 text-center shadow-soft ring-1 ring-[#eee3d3]">
+        <p className="text-sm font-black text-slate-700">项目尚未开始</p>
+        <p className="mt-2 text-xs font-bold text-slate-500">项目开始后，这里会从第 1 周起逐周累计展示。</p>
+      </section>
+    );
+  }
+
+  const values = points.map((point) => trend === 'minutes' ? point.minutes : point.days);
+  const max = Math.max(1, ...values);
+  const chartWidth = Math.max(640, points.length * 86);
+  const chartPoints = points.map((point, index) => {
+    const x = 32 + (index * (chartWidth - 64)) / Math.max(1, points.length - 1);
+    const value = trend === 'minutes' ? point.minutes : point.days;
+    const y = 132 - (value / max) * 96;
+    return { ...point, x, y, value };
+  });
+  const path = chartPoints.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
 
   return (
-    <div className="space-y-5">
-      <header className="flex items-center justify-between pt-2">
-        <div>
-          <p className="text-sm font-bold text-orange-700">MyTime</p>
-          <h1 className="text-2xl font-black tracking-tight">{data.project.name}</h1>
-        </div>
-        <button onClick={onBack} className="rounded-full bg-white/70 px-4 py-2 text-xs font-bold text-slate-500 shadow-sm">返回空间</button>
-      </header>
-
-      <section className="rounded-[2.2rem] bg-white/90 p-6 shadow-soft ring-1 ring-white">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-500">项目目标</p>
-            <h2 className="mt-2 text-base font-black leading-7 text-slate-700">{data.project.goal || data.project.total_goal}</h2>
-          </div>
-        </div>
-        <div className="mt-5 rounded-[1.6rem] bg-cream p-5">
-          <p className="text-sm font-bold text-slate-500">当前阶段</p>
-          <p className="mt-1 text-xl font-black text-slate-800">{currentPhase?.name || '先建立项目路线图'}</p>
-          <p className="mt-2 text-xs font-bold text-slate-500">{currentPhase ? `${currentPhase?.start_date} — ${currentPhase?.end_date} · ${currentPhase?.progress}%` : '路线图会帮助你确认先后顺序。'}</p>
-        </div>
-        <button onClick={onStart} className="mt-5 w-full rounded-[1.7rem] bg-gradient-to-r from-orange-400 to-amber-300 px-6 py-5 text-lg font-black text-white shadow-lg shadow-orange-100 active:scale-[0.99]">
-          开始专注
-        </button>
-      </section>
-
-      <section className="rounded-[2rem] bg-white/80 p-5 shadow-soft">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-bold text-slate-500">本周推进</p>
-            <h2 className="text-xl font-black">{data.currentPlan?.theme || '还未选择本周行动'}</h2>
-          </div>
-          <button onClick={onPlan} className="rounded-full bg-mint/70 px-4 py-2 text-sm font-black text-emerald-800">调整</button>
-        </div>
-        {data.currentPlanItems.length ? (
-          <div className="mt-4 space-y-2">
-            {data.currentPlanItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between rounded-2xl bg-cream/70 px-4 py-3">
-                <span className="text-sm font-black text-slate-700">{item.task_board?.name || '未命名行动'}</span>
-                {Number(item.expected_minutes ?? 0) > 0 ? <span className="text-xs font-bold text-slate-500">预计 {minutesToText(Number(item.expected_minutes))}</span> : null}
-              </div>
-            ))}
-          </div>
-        ) : <p className="mt-4 text-sm font-bold text-slate-500">只保留 1—3 件本周最重要的推进事项。</p>}
-        {weekExpected > 0 ? <p className="mt-3 text-xs font-bold text-slate-500">本周预计投入 {minutesToText(weekExpected)}</p> : null}
-      </section>
-
-      <div className="grid grid-cols-3 gap-2">
-        <button onClick={onGantt} className="rounded-2xl bg-sky-100 p-4 text-center"><p className="text-xs font-black text-sky-800">路线图</p><p className="mt-1 text-lg font-black text-sky-900">{data.phases.length}</p></button>
-        <button onClick={onBoards} className="rounded-2xl bg-orange-100 p-4 text-center"><p className="text-xs font-black text-orange-800">行动项</p><p className="mt-1 text-lg font-black text-orange-900">{data.taskBoards.length}</p></button>
-        <button onClick={onReview} className="rounded-2xl bg-violet-100 p-4 text-center"><p className="text-xs font-black text-violet-800">AI 复盘</p><p className="mt-1 text-lg font-black text-violet-900">{data.recentReviews.length}</p></button>
+    <section className="rounded-[1.8rem] bg-white/80 p-5 shadow-soft ring-1 ring-[#eee3d3]">
+      <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black text-slate-500">项目全周期趋势 · 已记录 {points.length} 周</p><h3 className="mt-1 text-base font-black">{trend === 'minutes' ? '每周专注时间' : '每周专注天数'}</h3></div><span className="text-xs font-bold text-slate-400">点击卡片收起</span></div>
+      <div className="mt-4 overflow-x-auto pb-2">
+        <svg viewBox={`0 0 ${chartWidth} 180`} className="h-44 max-w-none" style={{ width: `${chartWidth}px` }} role="img" aria-label={trend === 'minutes' ? '项目全周期每周专注时间折线图' : '项目全周期每周专注天数折线图'}>
+          <line x1="32" y1="132" x2={chartWidth - 32} y2="132" stroke="#eadfce" strokeWidth="2" />
+          <line x1="32" y1="84" x2={chartWidth - 32} y2="84" stroke="#f1e9de" strokeWidth="2" strokeDasharray="5 7" />
+          <line x1="32" y1="36" x2={chartWidth - 32} y2="36" stroke="#f1e9de" strokeWidth="2" strokeDasharray="5 7" />
+          <path d={path} fill="none" stroke={trend === 'minutes' ? '#d99054' : '#8870b8'} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+          {chartPoints.map((point) => <g key={point.weekStart}><circle cx={point.x} cy={point.y} r="6" fill={trend === 'minutes' ? '#d99054' : '#8870b8'} /><text x={point.x} y="158" textAnchor="middle" fontSize="12" fill="#8290a3" fontWeight="700">{point.label}</text></g>)}
+        </svg>
       </div>
-
-      <section className="grid grid-cols-2 gap-3">
-        <MetricCard label="本周专注" value={minutesToText(data.stats.weekMinutes)} tone="bg-sky-100" />
-        <MetricCard label="连续记录" value={`${data.stats.streakDays}天`} tone="bg-emerald-100" />
-        <MetricCard label="预计投入" value={weekExpected ? minutesToText(weekExpected) : '未设'} tone="bg-orange-100" />
-        <button onClick={onStats} className="rounded-[1.6rem] bg-yellow-100 p-4 text-left"><p className="text-sm font-bold text-slate-500">查看统计</p><p className="mt-2 text-2xl font-black">{data.stats.completionRate}%</p></button>
-      </section>
-
-      <section className="rounded-[2rem] bg-white/80 p-5 shadow-soft">
-        <h2 className="mb-4 text-lg font-black">最近专注</h2>
-        {activeBoards.length ? <div className="no-scrollbar mb-4 flex gap-2 overflow-x-auto">
-          <button onClick={() => onRecordFilter('all')} className={`shrink-0 rounded-full px-4 py-2 text-sm font-black ${recordFilter === 'all' ? 'bg-ink text-white' : 'bg-cream text-slate-600'}`}>全部</button>
-          {activeBoards.map((board) => <button key={board.id} onClick={() => onRecordFilter(board.id)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-black ${recordFilter === board.id ? 'bg-ink text-white' : 'bg-cream text-slate-600'}`}>{board.name}</button>)}
-        </div> : null}
-        <RecordList records={filteredRecords} />
-      </section>
-    </div>
+    </section>
   );
 }
 
