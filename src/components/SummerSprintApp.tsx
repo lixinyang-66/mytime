@@ -302,7 +302,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className="clay-app-shell safe-bottom mx-auto min-h-screen w-full max-w-3xl px-4 py-5 text-ink sm:px-6">
       <AppClayCountrysideBackdrop />
-      <div className="app-clay-content relative z-10">{children}</div>
+      <div className="app-clay-content app-soft-clay relative z-10">{children}</div>
     </main>
   );
 }
