@@ -1729,6 +1729,242 @@ main .rounded-full {
 }
 
 /*
+ * Unified in-app soft clay system
+ *
+ * This applies only inside Shell's .app-soft-clay wrapper.  The countryside
+ * backdrop and the login page remain outside this scope.  Surface color is
+ * deliberately near-ivory; volume comes from the warm lower edge and soft
+ * contact shadow instead of dark texture or a heavy outline.
+ */
+.app-clay-content.app-soft-clay {
+  --soft-clay-ivory: #fffdf8;
+  --soft-clay-cream: #fff7eb;
+  --soft-clay-edge: #eadbc5;
+  --soft-clay-rim: rgba(177, 137, 94, .25);
+  --soft-clay-depth: 0 5px 0 #eadcc8, 0 15px 28px rgba(96, 74, 51, .15);
+  --soft-clay-small-depth: 0 3px 0 #eee1d0, 0 8px 16px rgba(96, 74, 51, .12);
+  --soft-clay-inset: inset 0 1px 0 rgba(255, 255, 255, .96), inset -5px -6px 10px rgba(190, 151, 107, .07);
+}
+
+/* Page boards: one light, thick, rounded clay slab per application view. */
+.app-clay-content.app-soft-clay > .space-dashboard-clay,
+.app-clay-content.app-soft-clay > .project-home-clay,
+.app-clay-content.app-soft-clay > .space-y-5:not(.focus-clay-countryside),
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay {
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid var(--soft-clay-rim) !important;
+  background: var(--soft-clay-cream) !important;
+  background-image: none !important;
+  box-shadow: var(--soft-clay-inset), 0 7px 0 #e6d4bc, 0 20px 38px rgba(88, 68, 47, .16) !important;
+}
+
+.app-clay-content.app-soft-clay > .project-home-clay,
+.app-clay-content.app-soft-clay > .space-y-5:not(.focus-clay-countryside) {
+  padding: clamp(1.5rem, 3vw, 2.75rem) !important;
+  border-radius: 2.5rem;
+}
+
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay::before {
+  content: none !important;
+}
+
+/* Main sections and project cards are light raised inserts, not framed boxes. */
+.app-clay-content.app-soft-clay .space-dashboard-clay > section,
+.app-clay-content.app-soft-clay .project-home-clay > section,
+.app-clay-content.app-soft-clay > .space-y-5:not(.focus-clay-countryside) > section,
+.app-clay-content.app-soft-clay > .space-y-5:not(.focus-clay-countryside) > div > section,
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section,
+.app-clay-content.app-soft-clay .project-hero-clay,
+.app-clay-content.app-soft-clay .space-project-row,
+.app-clay-content.app-soft-clay .space-focus-time-card,
+.app-clay-content.app-soft-clay .space-focus-project-card,
+.app-clay-content.app-soft-clay .space-focus-summary-bar {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--soft-clay-rim) !important;
+  outline: none !important;
+  background: var(--soft-clay-ivory) !important;
+  background-image: none !important;
+  box-shadow: var(--soft-clay-inset), var(--soft-clay-depth) !important;
+}
+
+.app-clay-content.app-soft-clay .space-dashboard-clay > section::before,
+.app-clay-content.app-soft-clay .project-home-clay > section::before,
+.app-clay-content.app-soft-clay > .space-y-5:not(.focus-clay-countryside) > section::before,
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay > section::before,
+.app-clay-content.app-soft-clay .space-focus-time-card::before,
+.app-clay-content.app-soft-clay .space-focus-project-card::before,
+.app-clay-content.app-soft-clay .space-focus-summary-bar::before {
+  content: none !important;
+}
+
+/* Sub-cards retain only a very faint warm variation, never cool green or blue. */
+.app-clay-content.app-soft-clay .space-mood-tray,
+.app-clay-content.app-soft-clay .space-focus-quote-panel,
+.app-clay-content.app-soft-clay .bg-cream,
+.app-clay-content.app-soft-clay .bg-cream\/70,
+.app-clay-content.app-soft-clay .bg-cream\/60,
+.app-clay-content.app-soft-clay .bg-\[\#fffaf4\],
+.app-clay-content.app-soft-clay .bg-\[\#fff8ec\] {
+  border: 1px solid rgba(189, 149, 105, .18) !important;
+  background: #fff5e7 !important;
+  background-image: none !important;
+  box-shadow: var(--soft-clay-inset), var(--soft-clay-small-depth) !important;
+}
+
+.app-clay-content.app-soft-clay .space-focus-review-panel { background: #fffaf0 !important; }
+.app-clay-content.app-soft-clay .space-focus-records-panel { background: #fff7ed !important; }
+.app-clay-content.app-soft-clay .space-focus-time-card:first-child { background: #fff3d7 !important; }
+.app-clay-content.app-soft-clay .space-focus-time-card:last-child { background: #fff0df !important; }
+.app-clay-content.app-soft-clay .space-focus-project-card:nth-child(3n + 1) { background: #fff4df !important; }
+.app-clay-content.app-soft-clay .space-focus-project-card:nth-child(3n + 2) { background: #fff0df !important; }
+.app-clay-content.app-soft-clay .space-focus-project-card:nth-child(3n + 3) { background: #fff8e8 !important; }
+.app-clay-content.app-soft-clay .space-focus-summary-bar { background: #fff3e8 !important; }
+
+/* The project home grid, plan cards, boards, review items, and metrics. */
+.app-clay-content.app-soft-clay .project-home-clay > .grid > button,
+.app-clay-content.app-soft-clay .project-home-clay > .grid > div,
+.app-clay-content.app-soft-clay > .space-y-5:not(.focus-clay-countryside) > .grid > button,
+.app-clay-content.app-soft-clay > .space-y-5:not(.focus-clay-countryside) > .grid > div,
+.app-clay-content.app-soft-clay .space-y-2 > div,
+.app-clay-content.app-soft-clay .space-y-3 > div,
+.app-clay-content.app-soft-clay article {
+  border: 1px solid rgba(189, 149, 105, .18) !important;
+  background: #fffaf2 !important;
+  background-image: none !important;
+  box-shadow: var(--soft-clay-inset), var(--soft-clay-small-depth) !important;
+}
+
+.app-clay-content.app-soft-clay .bg-sky-100,
+.app-clay-content.app-soft-clay .bg-emerald-100,
+.app-clay-content.app-soft-clay .bg-violet-100,
+.app-clay-content.app-soft-clay .bg-\[\#eee8f8\],
+.app-clay-content.app-soft-clay .bg-\[\#f3edfb\] { background: #fff0df !important; }
+.app-clay-content.app-soft-clay .bg-yellow-100,
+.app-clay-content.app-soft-clay .bg-amber-100 { background: #fff1ca !important; }
+.app-clay-content.app-soft-clay .bg-orange-100,
+.app-clay-content.app-soft-clay .bg-\[\#fff1df\] { background: #ffe8d1 !important; }
+
+/* Compact, rounded clay keycaps for all secondary actions. */
+.app-clay-content.app-soft-clay button:not([class*='bg-ink']):not([class*='bg-gradient-to']):not(.space-focus-primary-action) {
+  border: 1px solid rgba(177, 137, 94, .23) !important;
+  background-color: #fff9ef !important;
+  background-image: none !important;
+  box-shadow: var(--soft-clay-inset), var(--soft-clay-small-depth) !important;
+}
+
+.app-clay-content.app-soft-clay button[class*='bg-ink'],
+.app-clay-content.app-soft-clay button[class*='bg-gradient-to'],
+.app-clay-content.app-soft-clay .space-focus-primary-action {
+  border: 1px solid #243652 !important;
+  background: #2c405f !important;
+  background-image: none !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 5px 0 #1c2d48, 0 13px 22px rgba(36, 52, 76, .22) !important;
+}
+
+.app-clay-content.app-soft-clay button:hover:not(:disabled) {
+  filter: none !important;
+  transform: translateY(-1px);
+}
+
+.app-clay-content.app-soft-clay button:active:not(:disabled) {
+  transform: translateY(3px) !important;
+  box-shadow: inset 0 3px 7px rgba(101, 71, 43, .14), 0 1px 0 #e6d7c6, 0 4px 9px rgba(96, 74, 51, .1) !important;
+}
+
+.app-clay-content.app-soft-clay input,
+.app-clay-content.app-soft-clay textarea,
+.app-clay-content.app-soft-clay select {
+  border: 1px solid rgba(181, 140, 96, .22) !important;
+  background: #fffdf9 !important;
+  background-image: none !important;
+  box-shadow: inset 0 2px 5px rgba(165, 123, 79, .08), 0 2px 0 rgba(255, 255, 255, .86) !important;
+}
+
+.app-clay-content.app-soft-clay h1,
+.app-clay-content.app-soft-clay h2,
+.app-clay-content.app-soft-clay h3,
+.app-clay-content.app-soft-clay h4 {
+  color: #263b58;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .7), 0 2px 2px rgba(65, 55, 44, .1) !important;
+}
+
+.app-clay-content.app-soft-clay .text-violet-600,
+.app-clay-content.app-soft-clay .text-violet-700,
+.app-clay-content.app-soft-clay .text-violet-800,
+.app-clay-content.app-soft-clay .text-violet-900,
+.app-clay-content.app-soft-clay .text-sky-700,
+.app-clay-content.app-soft-clay .text-sky-800,
+.app-clay-content.app-soft-clay .text-sky-900,
+.app-clay-content.app-soft-clay .text-emerald-700,
+.app-clay-content.app-soft-clay .text-emerald-800 {
+  color: #8f552f !important;
+}
+
+/* Space Focus previously carried several stronger, page-specific color rules.
+   Keep its controls inside the same light ivory system with a higher scope. */
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-time-card,
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-project-card,
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-summary-bar {
+  border: 1px solid rgba(189, 149, 105, .2) !important;
+  background: #fffaf2 !important;
+  background-image: none !important;
+  box-shadow: var(--soft-clay-inset), var(--soft-clay-small-depth) !important;
+}
+
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-time-card:first-child { background: #fff3d7 !important; }
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-time-card:last-child { background: #fff0df !important; }
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-project-card:nth-child(3n + 1) { background: #fff4df !important; }
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-project-card:nth-child(3n + 2) { background: #fff0df !important; }
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-project-card:nth-child(3n + 3) { background: #fff8e8 !important; }
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-summary-bar { background: #fff3e8 !important; }
+
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-nav {
+  border: 1px solid rgba(177, 137, 94, .23) !important;
+  background: #fff7eb !important;
+  background-image: none !important;
+  box-shadow: var(--soft-clay-inset), var(--soft-clay-small-depth) !important;
+}
+
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-nav-key,
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-small-action,
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-exit-button {
+  border: 1px solid rgba(177, 137, 94, .23) !important;
+  background: #fffaf2 !important;
+  background-image: none !important;
+  box-shadow: var(--soft-clay-inset), var(--soft-clay-small-depth) !important;
+}
+
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-nav-key.is-active,
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-small-action { background: #ffe9d1 !important; }
+
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-primary-action {
+  border: 1px solid #243652 !important;
+  background: #2c405f !important;
+  background-image: none !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 5px 0 #1c2d48, 0 13px 22px rgba(36, 52, 76, .22) !important;
+}
+
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-time-card::before,
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-project-card::before,
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-summary-bar::before,
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-nav-key::before,
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-small-action::before,
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-exit-button::before,
+.app-clay-content.app-soft-clay .space-focus-page-clay.space-focus-page-clay.space-focus-page-clay.space-focus-page-clay .space-focus-primary-action::before {
+  content: none !important;
+}
+
+@media (max-width: 640px) {
+  .app-clay-content.app-soft-clay > .project-home-clay,
+  .app-clay-content.app-soft-clay > .space-y-5:not(.focus-clay-countryside) {
+    padding: 1.2rem !important;
+    border-radius: 2rem;
+  }
+}
+
+/*
  * 登录页第三版：四个关键层级全部直接使用生成的凸起粘土贴图。
  * 必须保持透明底，不能再以渐变、内凹阴影或不透明底色把贴图边缘的厚度和投影压平。
  */
